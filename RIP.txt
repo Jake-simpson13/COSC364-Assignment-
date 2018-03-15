@@ -12,3 +12,7 @@ Each router that implements RIP is assumed to have a routing table. This table h
 
 Select information
 https://pymotw.com/2/select/
+
+
+thread information
+https://stackoverflow.com/questions/2846653/how-to-use-threading-in-python
