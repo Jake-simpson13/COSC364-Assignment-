@@ -1,0 +1,14 @@
+in RIP every router that participates in routing sends an update message to all its neighbors once every 30 seconds. Suppose the current route for network N uses router G. If we don't hear from G for 180 seconds, we can assume that either the router has crashed or the network connecting us to it has become unusable. Thus, we mark the route as invalid.
+
+
+
+Each router that implements RIP is assumed to have a routing table. This table has one entry for every destination that is reachable throughout the system operating RIP. Each entry contains at least the following information:
+- The IPv4 address of the destination.
+- A metric, which represents the total cost of getting a datagram from the router to that destination. This metric is the sum of the costs associated with the networks that would be traversed to get to the destination.
+- The IPv4 address of the next router along the path to the destination (i.e., the next hop). If the destination is on one of the directly-connected networks, this item is not needed.
+- A flag to indicate that information about the route has changed recently. This will be referred to as the "route change flag."
+- Various timers associated with the route. See section 3.6 for more details on timers.
+
+
+Select information
+https://pymotw.com/2/select/
