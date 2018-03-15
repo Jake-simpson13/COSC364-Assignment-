@@ -3,6 +3,8 @@ import re
 import socket
 import time
 import math
+import select
+import sys
 
 ROUTER_ID = None
 INPUT_PORTS = []
@@ -186,12 +188,50 @@ def main():
     print(FORWARDING_TABLE)    
     print()
     
-    #while True:
-        #data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
-        #print("received from:", addr, "message:", data)
+    while True:
+        timer_queue = [];
+        queues = {}
+        incoming, outgoing = select.select(INCOMING_SOCKETS, OUTGOING_SOCKETS)
+        
+        #print("HELLO")
+        for s in timer:
+            time.sleep(1)
+            timer_queue.append(1)
+        
+        
+        for s in inputs:
+            i = 1
+            print("hello")
+            
+        for s in outputs:
+            i = 1
+            
+        print(timer_queue)
+'''        
+        MESSAGE = "Hello, World!"
+        for input_port, cost, router_id in FORWARDING_TABLE:
+        
+            sock = socket.socket(socket.AF_INET, # Internet
+                     socket.SOCK_DGRAM) # UDP
+            sock.sendto(MESSAGE.encode('utf-8'), (IP, input_port))        
+        
+            data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
+            print("received from:", addr, "message:", data)
           
-    #closeSockets()
+    closeSockets()
     
+
+'''
+
+"""
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Internet, UDP
+while True:
+    if MESSAGE != "":
+        sock.sendto(MESSAGE.encode('utf-8'), (UDP_IP, UDP_PORT))
+        MESSAGE = ""
+    MESSAGE = str(input())
+"""
+
 
 
 if __name__ == "__main__":
