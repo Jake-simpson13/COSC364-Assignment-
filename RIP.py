@@ -152,7 +152,7 @@ def closeSockets():
 """ a graph from the routers given in the config file that have passed all 
     required tests.
     Format is:
-    (Router ID, Metric Value) 
+    (Router ID, Metric Value, router learnt from) 
     in a tuple """    
 def directConnectGraph():   
     for node in OUTGOING_SOCKETS:
@@ -190,7 +190,7 @@ def main():
         #data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
         #print("received from:", addr, "message:", data)
           
-    closeSockets()
+    #closeSockets()
     
 
 
