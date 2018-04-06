@@ -6,6 +6,9 @@ import math
 import select
 import sys
 
+import _thread
+import threading
+
 ROUTER_ID = None
 INPUT_PORTS = []
 OUTPUTS = []
@@ -188,25 +191,8 @@ def main():
     print(FORWARDING_TABLE)    
     print()
     
-    while True:
-        timer_queue = [];
-        queues = {}
-        incoming, outgoing = select.select(INCOMING_SOCKETS, OUTGOING_SOCKETS)
-        
-        #print("HELLO")
-        for s in timer:
-            time.sleep(1)
-            timer_queue.append(1)
-        
-        
-        for s in inputs:
-            i = 1
-            print("hello")
-            
-        for s in outputs:
-            i = 1
-            
-        print(timer_queue)
+    
+    
 '''        
         MESSAGE = "Hello, World!"
         for input_port, cost, router_id in FORWARDING_TABLE:

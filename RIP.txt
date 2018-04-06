@@ -16,3 +16,6 @@ https://pymotw.com/2/select/
 
 thread information
 https://stackoverflow.com/questions/2846653/how-to-use-threading-in-python
+//
+https://docs.python.org/3/library/threading.html
+//
