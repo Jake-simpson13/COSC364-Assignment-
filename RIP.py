@@ -16,6 +16,7 @@ OUTPUTS = []
 USED_ROUTER_IDS = []
 INCOMING_SOCKETS = []
 OUTGOING_SOCKETS = []
+THREADS = []
 
 LOW_ROUTER_ID_NUMBER = 1
 HIGH_ROUTER_ID_NUMBER = 64000
@@ -170,10 +171,19 @@ def sortGraph(graph):
 
 ########################## THREAD FUNCTIONS ##########################
 
-def recieve(sockets):
-    i = 1
+""" a function called for the recieve thread instead of run(). an infinite 
+loop that checks incoming sockets, and forwards accordingly or drops """
+def recieve():
+    while True:
+        i = 1
     
-def send(sockets):
+    # after loop condition is broken, close threads    
+    for threads in THREADS:
+        threads.exit()
+
+""" a function called by the receive function, to forward a packet to the 
+next destination """    
+def send():
     i = 1
     
     
@@ -196,15 +206,14 @@ def main():
     print(FORWARDING_TABLE)    
     print()
     
-    # start two threads, that use two functions recieve and send 
-    recieve_thread = Thread(target = recieve, args = INCOMING_SOCKETS)
-    send_thread = Thread(target = send, args = OUTGOING_SOCKETS)
-    recieve_thread.start()
-    send_thread.start()
+    # starts threads, that use two functions recieve to recieve, then send to forward data 
+    for socket in INCOMING_SOCKETS:
+        recieve_thread = Thread(target = recieve, args = [])
+        recieve_thread.start()
+        THREADS.append(recieve_thread)
+    print(THREADS)
     
-    print(send_thread)
-    print(recieve_thread)
-    
+
 
 
 
