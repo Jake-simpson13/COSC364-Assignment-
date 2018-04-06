@@ -7,7 +7,8 @@ import select
 import sys
 
 import _thread
-import threading
+#import threading
+from threading import Thread
 
 ROUTER_ID = None
 INPUT_PORTS = []
@@ -112,11 +113,8 @@ def readInputFile(configFile):
         setupData = readInputFile(configFile)
     
     
-    
-    
 ########################## UDP SOCKETS ##########################
     
-
 """ Set up a UDP port for all input ports. Acting as server side """
 def incomingSocketSetUp():              # https://wiki.python.org/moin/UdpCommunication
     for inputSock in INPUT_PORTS:
@@ -150,10 +148,8 @@ def closeSockets():
     print(OUTGOING_SOCKETS)
 
         
-
 ########################## BELLMAN FORD ALGORITHM ##########################
     
-
 """ a graph from the routers given in the config file that have passed all 
     required tests.
     Format is:
@@ -171,6 +167,15 @@ def directConnectGraph():
 def sortGraph(graph):
     return graph.sort(key=lambda tup: tup[0])
 
+
+########################## THREAD FUNCTIONS ##########################
+
+def recieve(sockets):
+    i = 1
+    
+def send(sockets):
+    i = 1
+    
     
 ########################## MAIN ##########################
     
@@ -191,8 +196,29 @@ def main():
     print(FORWARDING_TABLE)    
     print()
     
+    # start two threads, that use two functions recieve and send 
+    recieve_thread = Thread(target = recieve, args = INCOMING_SOCKETS)
+    send_thread = Thread(target = send, args = OUTGOING_SOCKETS)
+    recieve_thread.start()
+    send_thread.start()
     
+    print(send_thread)
+    print(recieve_thread)
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 '''        
         MESSAGE = "Hello, World!"
         for input_port, cost, router_id in FORWARDING_TABLE:
