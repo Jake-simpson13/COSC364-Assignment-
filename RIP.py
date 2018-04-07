@@ -6,9 +6,7 @@ import math
 import select
 import sys
 
-import _thread
-#import threading
-from threading import Thread
+from multiprocessing import *
 
 ROUTER_ID = None
 INPUT_PORTS = []
@@ -16,7 +14,6 @@ OUTPUTS = []
 USED_ROUTER_IDS = []
 INCOMING_SOCKETS = []
 OUTGOING_SOCKETS = []
-THREADS = []
 
 LOW_ROUTER_ID_NUMBER = 1
 HIGH_ROUTER_ID_NUMBER = 64000
@@ -122,9 +119,7 @@ def incomingSocketSetUp():              # https://wiki.python.org/moin/UdpCommun
         sockID = "IncomingSocket" + str(inputSock)
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind((IP, inputSock))
-        INCOMING_SOCKETS.append((sockID,sock))
-    print(INCOMING_SOCKETS)
-        
+        INCOMING_SOCKETS.append((sockID,sock))        
         
         
 """ set up a UDP port for all out output ports. Acting as client side """
@@ -134,9 +129,7 @@ def outputSocketSetUp():
         routerID = routerID.strip('-')
         sockID = "OutgoingSocket" + str(routerID)
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        OUTGOING_SOCKETS.append((sockID, portno, routerID, metricValue, sock))
-    print(OUTGOING_SOCKETS)
-        
+        OUTGOING_SOCKETS.append((sockID, portno, routerID, metricValue, sock))        
 
 
 """ close all open sockets """
@@ -145,8 +138,8 @@ def closeSockets():
         sock.close()
     for sockID, portno, routerID, metricValue, sock in OUTGOING_SOCKETS: 
         sock.close()
-    print(INCOMING_SOCKETS)
-    print(OUTGOING_SOCKETS)
+    #print(INCOMING_SOCKETS)
+    #print(OUTGOING_SOCKETS)
 
         
 ########################## BELLMAN FORD ALGORITHM ##########################
@@ -173,13 +166,20 @@ def sortGraph(graph):
 
 """ a function called for the recieve thread instead of run(). an infinite 
 loop that checks incoming sockets, and forwards accordingly or drops """
-def recieve():
+def recieve(socket):
+
+    recieve_process = Process(target = recieve, args = [socket])
+    recieve_process.start()
+    #print(recieve_process.is_alive())    
+
+
     while True:
-        i = 1
+        data, addr = socket[1].recvfrom(1024) # buffer size is 1024 bytes
+        print("received from:", addr, "message:", data)
+        break
     
-    # after loop condition is broken, close threads    
-    for threads in THREADS:
-        threads.exit()
+    recieve_process.terminate()       
+    
 
 """ a function called by the receive function, to forward a packet to the 
 next destination """    
@@ -208,20 +208,11 @@ def main():
     
     # starts threads, that use two functions recieve to recieve, then send to forward data 
     for socket in INCOMING_SOCKETS:
-        recieve_thread = Thread(target = recieve, args = [])
-        recieve_thread.start()
-        THREADS.append(recieve_thread)
-    print(THREADS)
+        recieve(socket)
+
     
 
-
-
-
-
-
-
-
-
+    closeSockets()
 
 
 
@@ -238,8 +229,6 @@ def main():
         
             data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
             print("received from:", addr, "message:", data)
-          
-    closeSockets()
     
 
 '''
