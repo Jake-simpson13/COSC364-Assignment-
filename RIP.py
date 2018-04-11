@@ -7,6 +7,7 @@ import select
 import sys
 
 from multiprocessing import *
+from threading import *
 
 ROUTER_ID = None
 INPUT_PORTS = []
@@ -114,12 +115,17 @@ def readInputFile(configFile):
 ########################## UDP SOCKETS ##########################
     
 """ Set up a UDP port for all input ports. Acting as server side """
-def incomingSocketSetUp():              # https://wiki.python.org/moin/UdpCommunication
+def incomingSocketSetUp():              
     for inputSock in INPUT_PORTS:
         sockID = "IncomingSocket" + str(inputSock)
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((IP, inputSock))
-        INCOMING_SOCKETS.append((sockID,sock))        
+        sock.setblocking(True)
+        try:
+            sock.bind((IP, inputSock))
+            INCOMING_SOCKETS.append((sockID,sock))
+        except OSError:
+            print("Socket already bound \n\n")
+            sys.exit(1)
         
         
 """ set up a UDP port for all out output ports. Acting as client side """
@@ -134,12 +140,20 @@ def outputSocketSetUp():
 
 """ close all open sockets """
 def closeSockets():
-    for sockID, sock in INCOMING_SOCKETS:
-        sock.close()
-    for sockID, portno, routerID, metricValue, sock in OUTGOING_SOCKETS: 
-        sock.close()
-    #print(INCOMING_SOCKETS)
-    #print(OUTGOING_SOCKETS)
+    try:
+        for sockID, sock in INCOMING_SOCKETS:
+            sock.shutdown(socket.SHUT_RDWR)
+            sock.close()
+        for sockID, portno, routerID, metricValue, sock in OUTGOING_SOCKETS: 
+            sock.shutdown(socket.SHUT_RDWR)
+            sock.close()
+        print(INCOMING_SOCKETS)
+        print(OUTGOING_SOCKETS)            
+            
+    except OSError: 
+        print("Error closing Sockets")
+        sys.exit(1)
+
 
         
 ########################## BELLMAN FORD ALGORITHM ##########################
@@ -164,21 +178,19 @@ def sortGraph(graph):
 
 ########################## THREAD FUNCTIONS ##########################
 
-""" a function called for the recieve thread instead of run(). an infinite 
+""" a function called for the receive thread instead of run(). an infinite 
 loop that checks incoming sockets, and forwards accordingly or drops """
-def recieve(socket):
-
-    recieve_process = Process(target = recieve, args = [socket])
-    recieve_process.start()
-    #print(recieve_process.is_alive())    
-
-
-    while True:
+def receive(socket):
+    run = True
+    
+    while run:
+        print("current socket" ,socket[0])
         data, addr = socket[1].recvfrom(1024) # buffer size is 1024 bytes
         print("received from:", addr, "message:", data)
-        break
+        #break
     
-    recieve_process.terminate()       
+    #receive.terminate() 
+    
     
 
 """ a function called by the receive function, to forward a packet to the 
@@ -205,14 +217,25 @@ def main():
     print("Forwarding table")
     print(FORWARDING_TABLE)    
     print()
-    
-    # starts threads, that use two functions recieve to recieve, then send to forward data 
+
+    current_processes = []
+    # starts threads, that use two functions receive to receive, then send to forward data
+    print(INCOMING_SOCKETS)
     for socket in INCOMING_SOCKETS:
-        recieve(socket)
+        print("starting process for", socket[0])
+        #process = Process(target=receive, args=(socket, ))
+        process = Thread(target=receive, args=(socket, ))
+        current_processes.append(process)
+        
+    for process in current_processes:
+        process.start()   
+        #process.join()
+        print(process)
+        #receive(socket)
 
     
 
-    closeSockets()
+    #closeSockets()
 
 
 
