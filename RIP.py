@@ -181,10 +181,10 @@ def sortGraph(graph):
 """ a function called for the receive thread instead of run(). an infinite 
 loop that checks incoming sockets, and forwards accordingly or drops """
 def receive(socket):
-    run = True
     
-    while run:
-        print("current socket" ,socket[0])
+    while True:
+        print("current socket id" ,socket[0], "\ncurrent socket", socket[1], "\n")
+        print('now waiting for data')
         data, addr = socket[1].recvfrom(1024) # buffer size is 1024 bytes
         print("received from:", addr, "message:", data)
         #break
@@ -223,8 +223,8 @@ def main():
     print(INCOMING_SOCKETS)
     for socket in INCOMING_SOCKETS:
         print("starting process for", socket[0])
-        #process = Process(target=receive, args=(socket, ))
-        process = Thread(target=receive, args=(socket, ))
+        process = Process(target=receive, args=(socket, ))
+        #process = Thread(target=receive, args=(socket, ))
         current_processes.append(process)
         
     for process in current_processes:
