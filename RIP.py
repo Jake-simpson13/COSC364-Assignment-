@@ -214,8 +214,8 @@ def main():
     directConnectGraph()
     sortGraph(FORWARDING_TABLE)
     
-    print("Forwarding table")
-    print(FORWARDING_TABLE)    
+    print("Forwarding table \n", FORWARDING_TABLE, "\n")
+    print("OUTGOING SOCKETS \n", OUTGOING_SOCKETS)    
     print()
 
     current_processes = []
@@ -244,12 +244,14 @@ def main():
 
 '''        
         MESSAGE = "Hello, World!"
-        for input_port, cost, router_id in FORWARDING_TABLE:
+
+        for sid, input_port, cost, router_id, sock in OUTGOING_SOCKETS:
         
-            sock = socket.socket(socket.AF_INET, # Internet
-                     socket.SOCK_DGRAM) # UDP
-            sock.sendto(MESSAGE.encode('utf-8'), (IP, input_port))        
-        
+           # sock = socket.socket(socket.AF_INET, # Internet
+           #          socket.SOCK_DGRAM) # UDP
+            sock.sendto(MESSAGE.encode('utf-8'), (IP, int(input_port)))        
+'''        
+'''
             data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
             print("received from:", addr, "message:", data)
     
