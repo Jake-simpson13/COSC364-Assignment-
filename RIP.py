@@ -8,6 +8,7 @@ import sys
 
 from multiprocessing import *
 from threading import *
+from packets import *
 
 ROUTER_ID = None
 INPUT_PORTS = []
@@ -127,7 +128,7 @@ def incomingSocketSetUp():
             print("Socket already bound \n\n")
             sys.exit(1)
         
-        
+'''        
 """ set up a UDP port for all out output ports. Acting as client side """
 def outputSocketSetUp():
     for portno, metricValue, routerID in OUTPUTS:
@@ -136,7 +137,7 @@ def outputSocketSetUp():
         sockID = "OutgoingSocket" + str(routerID)
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         OUTGOING_SOCKETS.append((sockID, portno, routerID, metricValue, sock))        
-
+'''
 
 """ close all open sockets """
 def closeSockets():
@@ -199,10 +200,6 @@ def send():
     i = 1
     
     
-    
-def create_rip_packet():
-    
-    
 ########################## MAIN ##########################
     
         
@@ -210,7 +207,7 @@ def main():
     configFile = getInputFile()
     setupData = readInputFile(configFile)
     incomingSocketSetUp()
-    outputSocketSetUp()    
+    #outputSocketSetUp()    
     
     print()
     print("Router ID =", ROUTER_ID)
