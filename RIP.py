@@ -179,17 +179,34 @@ def sortGraph(graph):
 
 ########################## THREAD FUNCTIONS ##########################
 
+""" a function that takes the data from a socket as a string, then creates 
+    a new packet, and fills it with data to analyse """
+def openData(data):
+    i = 4
+    recvd_pac = Packet()
+    recvd_pac.command = data[:1]
+    recvd_pac.version = data[1:2]
+    recvd_pac.must_be_0 = data[2:4]
+    while i < len(data):
+        payload = Payload()
+        payload.addr_fam_id = data[i:i+1]
+        payload.must_be_0_2 = data[i+1:i+3]
+        payload.ipv4_addr = data[i+3:i+5]
+        payload.must_be_0_4 = data[i+5:i+9]
+        payload.metric = data[i+9:i+13]
+        i += 13
+        
+        print(payload)
+
+
 """ a function called for the receive thread instead of run(). an infinite 
 loop that checks incoming sockets, and forwards accordingly or drops """
 def receive(socket):
     
     while True:
-        print("current socket id" ,socket[0], "\ncurrent socket", socket[1], "\n")
-        print('now waiting for data')
         data, addr = socket[1].recvfrom(1024) # buffer size is 1024 bytes
-        print("received from:", addr, "message:", data)
-        #break
-    
+        print("SOCKET", socket[0], "received from:", addr, "message:", data)
+        openData(data)
     #receive.terminate() 
     
     
@@ -222,6 +239,7 @@ def main():
     current_processes = []
     # starts threads, that use two functions receive to receive, then send to forward data
     print(INCOMING_SOCKETS)
+
     for socket in INCOMING_SOCKETS:
         print("starting process for", socket[0])
         process = Process(target=receive, args=(socket, ))
