@@ -61,7 +61,6 @@ def extractRouterID(line):
     routerID = re.findall(r'\b\d+\b', line)
     if routerIdCheck(int(routerID[-1])) == True:
         ROUTER_ID = (int(routerID[-1]))
-        #print("Router ID =", ROUTER_ID)
 
     
 
@@ -71,8 +70,7 @@ def extractValidInputPorts(line):
     inputPorts = re.findall('[0-9]+', line)
     for ports in inputPorts:
         if portNumberCheck(ports) == True:
-            INPUT_PORTS.append(int(ports))
-    #print("Input Ports =", INPUT_PORTS)    
+            INPUT_PORTS.append(int(ports))  
 
 
 
@@ -84,9 +82,7 @@ def extractValidOutputPorts(line):
         outputPorts = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", lines)
         if outputPorts != []:
             if portNumberCheck(outputPorts[0]) == True:
-                OUTPUTS.append(outputPorts)
-    #print("output Ports =", OUTPUTS) 
-    
+                OUTPUTS.append([outputPorts])
 
 
 """ read and extract the router-id, input-ports and outputs """
@@ -128,16 +124,6 @@ def incomingSocketSetUp():
             print("Socket already bound \n\n")
             sys.exit(1)
         
-'''        
-""" set up a UDP port for all out output ports. Acting as client side """
-def outputSocketSetUp():
-    for portno, metricValue, routerID in OUTPUTS:
-        metricValue = metricValue.strip('-')
-        routerID = routerID.strip('-')
-        sockID = "OutgoingSocket" + str(routerID)
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        OUTGOING_SOCKETS.append((sockID, portno, routerID, metricValue, sock))        
-'''
 
 """ close all open sockets """
 def closeSockets():
@@ -162,16 +148,17 @@ def closeSockets():
 """ a graph from the routers given in the config file that have passed all 
     required tests.
     Format is:
-    (Router ID, Metric Value, router learnt from) 
+    (Router ID, Metric Value, router learnt from, counter) 
     in a tuple """    
 def directConnectGraph():   
+    counter = 0
     for node in OUTGOING_SOCKETS:
         #print("routerID =", node[2], "metricValue =", node[3])
-        FORWARDING_TABLE.append((int(node[2]), int(node[3]), ROUTER_ID)) 
+        FORWARDING_TABLE.append((int(node[2]), int(node[3]), ROUTER_ID, counter)) 
 
     
     
-""" sort nodes in graph to be orderedd in terms of router ID from 
+""" sort nodes in graph to be ordered in terms of router ID from 
     smallest to largest """
 def sortGraph(graph):
     return graph.sort(key=lambda tup: tup[0])
@@ -181,33 +168,44 @@ def sortGraph(graph):
 
 """ a function that takes the data from a socket as a string, then creates 
     a new packet, and fills it with data to analyse """
-def openData(data):
+def openData(data, addr, queue):
+    global FORWARDING_TABLE
     i = 4
     recvd_pac = Packet()
+    
     recvd_pac.command = data[:1]
     recvd_pac.version = data[1:2]
     recvd_pac.must_be_0 = data[2:4]
     while i < len(data):
         payload = Payload()
-        payload.addr_fam_id = data[i:i+1]
-        payload.must_be_0_2 = data[i+1:i+3]
-        payload.ipv4_addr = data[i+3:i+5]
-        payload.must_be_0_4 = data[i+5:i+9]
-        payload.metric = data[i+9:i+13]
-        i += 13
-        
-        print(payload)
+        payload.addr_fam_id = data[i:i+2]
+        payload.must_be_0_2 = data[i+2:i+4]
+        payload.ipv4_addr = data[i+4:i+8]
+        payload.routerID = data[i+8:i+12]
+        payload.must_be_0_4 = data[i+12:i+16]
+        payload.metric = data[i+16:i+20]
+        i += 20
+        #print(recvd_pac, payload)
+
+        for output_ports in OUTPUTS:
+            for input_port_num, metric, router_id in output_ports:
+                if int(addr[1]) == int(input_port_num):
+                    r_id = abs(int(router_id))
+                    graph_data = (int(payload.routerID), int(payload.metric), r_id, 0)
+                    FORWARDING_TABLE.append(graph_data)
+                    queue.put(FORWARDING_TABLE)
+    print(FORWARDING_TABLE)
+
 
 
 """ a function called for the receive thread instead of run(). an infinite 
 loop that checks incoming sockets, and forwards accordingly or drops """
-def receive(socket):
+def receive(socket, q):
     
     while True:
         data, addr = socket[1].recvfrom(1024) # buffer size is 1024 bytes
         print("SOCKET", socket[0], "received from:", addr, "message:", data)
-        openData(data)
-    #receive.terminate() 
+        openData(data, addr, q)
     
     
 
@@ -215,7 +213,23 @@ def receive(socket):
 next destination """    
 def send():
     i = 1
+   
+   
+def print_table(table):
+    print("Forwarding table: \n", table, "\n\n")
+   
+   
+def update(q):
+    table = []
+    while True:
+        try:
+            table = q.get(False)
+        except:
+            print("no new data")
+        print_table(table)
+        time.sleep(3)
     
+
     
 ########################## MAIN ##########################
     
@@ -223,9 +237,8 @@ def send():
 def main():
     configFile = getInputFile()
     setupData = readInputFile(configFile)
-    incomingSocketSetUp()
-    #outputSocketSetUp()    
-    
+    incomingSocketSetUp()  
+
     print()
     print("Router ID =", ROUTER_ID)
 
@@ -239,54 +252,23 @@ def main():
     current_processes = []
     # starts threads, that use two functions receive to receive, then send to forward data
     print(INCOMING_SOCKETS)
-
+    
+    
+    q = Queue()
+    
     for socket in INCOMING_SOCKETS:
-        print("starting process for", socket[0])
-        process = Process(target=receive, args=(socket, ))
-        #process = Thread(target=receive, args=(socket, ))
+        process = Process(target=receive, args=(socket, q, ))
         current_processes.append(process)
         
     for process in current_processes:
         process.start()   
-        #process.join()
-        print(process)
-        #receive(socket)
 
+
+    update(q)
+    #while True:
+    #    print("parent pipe recvd", parent_conn.recv())
     
-
     #closeSockets()
-
-
-
-
-
-
-'''        
-        MESSAGE = "Hello, World!"
-
-        for sid, input_port, cost, router_id, sock in OUTGOING_SOCKETS:
-        
-           # sock = socket.socket(socket.AF_INET, # Internet
-           #          socket.SOCK_DGRAM) # UDP
-            sock.sendto(MESSAGE.encode('utf-8'), (IP, int(input_port)))        
-'''        
-'''
-            data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
-            print("received from:", addr, "message:", data)
-    
-
-'''
-
-"""
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Internet, UDP
-while True:
-    if MESSAGE != "":
-        sock.sendto(MESSAGE.encode('utf-8'), (UDP_IP, UDP_PORT))
-        MESSAGE = ""
-    MESSAGE = str(input())
-"""
-
-
 
 if __name__ == "__main__":
     main()
