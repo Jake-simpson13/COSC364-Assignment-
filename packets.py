@@ -1,5 +1,5 @@
 """ 
-a class for the packet header, compplete with a field for 'payload'
+a class for the packet header, complete with a field for 'payload'
 which is the router information to be used in the router table
 """
 class Packet:
@@ -8,9 +8,14 @@ class Packet:
     # payload = RIP entries (20) (between 1 - 25 inc, otherwise multiple packets)   
 
     def __init__(self, command=None, version=None, p_payload=None):
-        self.command = command
-        self.version = version
+        if len(str(command)) == 1:
+            self.command = command
+        
+        if len(str(version)) == 1:    
+            self.version = version
+            
         self.must_be_0 = '00'
+        
         self.p_payload = p_payload
         
 
@@ -39,20 +44,53 @@ class Payload:
     # ipv4_addr = IPv4 address (4)
     # metric = metric (4) (cost - must be between 1 - 15 inc, 16 = inf / unreachable)
  
-    def __init__(self, addr_fam_id=None, ipv4_addr=None, metric=None):
-        self.addr_fam_id = addr_fam_id
+    def __init__(self, addr_fam_id=None, ipv4_addr=None, routerID=None, metric=None):
+        
+        if len(str(addr_fam_id)) == 2:
+            self.addr_fam_id = addr_fam_id
+        elif len(str(addr_fam_id)) == 1:
+            self.addr_fam_id = "0" + str(addr_fam_id)
+            
         self.must_be_0_2 = '00'
-        self.ipv4_addr = ipv4_addr
+        
+        if len(str(ipv4_addr)) == 4:
+            self.ipv4_addr = ipv4_addr
+        elif len(str(ipv4_addr)) == 3:
+            self.ipv4_addr = "0" + str(ipv4_addr)
+        elif len(str(ipv4_addr)) == 2:
+            self.ipv4_addr = "00" + str(ipv4_addr) 
+        elif len(str(ipv4_addr)) == 1:
+            self.ipv4_addr = "000" + str(ipv4_addr)         
+        
+        if len(str(routerID)) == 4:
+            self.routerID = routerID
+        elif len(str(routerID)) == 3:
+            self.routerID = "0" + str(routerID)
+        elif len(str(routerID)) == 2:
+            self.routerID = "00" + str(routerID) 
+        elif len(str(routerID)) == 1:
+            self.routerID = "000" + str(routerID)         
+        
         self.must_be_0_4 = '0000'
-        self. metric = metric
+        
+        if len(str(metric)) == 4:
+            self.metric = metric
+        elif len(str(metric)) == 3:
+            self.metric = "0" + str(metric)
+        elif len(str(metric)) == 2:
+            self.metric = "00" + str(metric) 
+        elif len(str(metric)) == 1:
+            self.metric = "000" + str(metric) 
+
+        
         
     
     def __str__(self):
-        return str(self.addr_fam_id) + str(self.must_be_0_2) + str(self.ipv4_addr) + str(self.must_be_0_4) + str(self.metric)
+        return str(self.addr_fam_id) + str(self.must_be_0_2) + str(self.ipv4_addr) + str(self.routerID) + str(self.must_be_0_4) + str(self.metric)
         
         
     def payload(self):
-        return str(self.addr_fam_id), self.must_be_0_2, str(self.ipv4_addr), self.must_be_0_4, str(self.metric)
+        return str(self.addr_fam_id), self.must_be_0_2, str(self.ipv4_addr), str(self.routerID), self.must_be_0_4, str(self.metric)
     
 
 
