@@ -169,8 +169,9 @@ def sortGraph(graph):
 
 """ a function that takes the data from a socket as a string, then creates 
     a new packet, and fills it with data to analyse """
-def openData(data, addr, queue):
+def openData(data, addr, queue, used_id_q):
     global FORWARDING_TABLE
+    global USED_ROUTER_IDS
     i = 4
     recvd_pac = Packet()
     
@@ -197,8 +198,9 @@ def openData(data, addr, queue):
                         
                         if int(payload.routerID) not in [item[0] for item in FORWARDING_TABLE]:
                             USED_ROUTER_IDS.append(int(payload.routerID))
+                            used_id_q.put(int(payload.routerID))
                             FORWARDING_TABLE.append(graph_data)
-                            queue.put(FORWARDING_TABLE)
+                            queue.put(graph_data)
                         #else:
                             ##for router in FORWARDING_TABLE:
                             #root = queue.get()
@@ -209,23 +211,24 @@ def openData(data, addr, queue):
                                 #print("NEW R DETAILS", router)
                                 #queue.put(router)
                     else:
-                        USED_ROUTER_IDS.append(int(payload.routerID))
-                        FORWARDING_TABLE.append(graph_data)
-                        queue.put(FORWARDING_TABLE)                        
+                        used_id_q.put(int(payload.routerID))
+                        #USED_ROUTER_IDS.append(int(payload.routerID))
+                        #FORWARDING_TABLE.append(graph_data)
+                        queue.put(graph_data)                        
                         
     print(FORWARDING_TABLE)
-    print("USed router ids", USED_ROUTER_IDS)
+    print("Used router ids", USED_ROUTER_IDS)
 
 
 
 """ a function called for the receive thread instead of run(). an infinite 
 loop that checks incoming sockets, and forwards accordingly or drops """
-def receive(socket, q):
+def receive(socket, q, q1):
     
     while True:
         data, addr = socket[1].recvfrom(1024) # buffer size is 1024 bytes
         print("SOCKET", socket[0], "received from:", addr, "message:", data)
-        openData(data, addr, q)
+        openData(data, addr, q, q1)
     
     
 
@@ -237,31 +240,40 @@ def send():
    
 def print_table(table):
     print("Forwarding table: \n", table, "\n\n")
+    print("Used router ids", USED_ROUTER_IDS)
+
    
    
-def update(q):
-    table = []
+def update(q, q1):
+    global FORWARDING_TABLE
+    global USED_ROUTER_IDS
     while True:
         try:
-            table = q.get(False)
+            FORWARDING_TABLE.append(q.get(False))
+            USED_ROUTER_IDS.append(q1.get(False))
         except:
             print("no new data")
-        for route in table:
+
+
+        for route in FORWARDING_TABLE:
            # for r_id, metric, learnt_from, time_alive in route: 
             #print("ONE ROUTE + ", route)
             route[3] = route[3] + 1
             if route[3] == 6:
                 route[1] = 16
             if route[3] >= 10:
-                table = delete_link(route, table)
+                FORWARDING_TABLE = delete_link(route, FORWARDING_TABLE)
                 
-        print_table(table)
+        print_table(FORWARDING_TABLE)
         time.sleep(1)
     
 def delete_link(route, table):
     #index = table.index(route)
     #print("route to be removed at index", index)
+    
+    print("need to remove", route[0], "from", USED_ROUTER_IDS)
     USED_ROUTER_IDS.remove(route[0])
+    
     table.remove(route)
     return table
     
@@ -289,16 +301,16 @@ def main():
     
     
     q = Queue()
+    q1 = Queue()
     
     for socket in INCOMING_SOCKETS:
-        process = Process(target=receive, args=(socket, q, ))
+        process = Process(target=receive, args=(socket, q, q1, ))
         current_processes.append(process)
         
     for process in current_processes:
         process.start()   
 
-
-    update(q)
+    update(q, q1)
     #while True:
     #    print("parent pipe recvd", parent_conn.recv())
     
