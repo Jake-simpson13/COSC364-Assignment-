@@ -1,0 +1,4 @@
+router-id 2
+input-ports 1102, 3002
+outputs 2001-1-1, 2003-3-3
+ 

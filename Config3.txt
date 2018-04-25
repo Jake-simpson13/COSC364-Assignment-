@@ -1,0 +1,4 @@
+router-id 3
+input-ports 2003, 3002
+outputs 3002-3-2, 3004-4-4
+ 
