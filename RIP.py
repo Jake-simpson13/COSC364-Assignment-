@@ -24,7 +24,7 @@ HIGH_PORT_NUMBER = 64000
 
 IP = "127.0.0.1"
 
-# a tuple with the layout (Router ID, Metric Value, Router Learnt From)
+# a tuple with the layout (Router ID, Metric Value, Router Learnt From, Time Loop)
 FORWARDING_TABLE = []
 
 
@@ -61,6 +61,7 @@ def extractRouterID(line):
     routerID = re.findall(r'\b\d+\b', line)
     if routerIdCheck(int(routerID[-1])) == True:
         ROUTER_ID = (int(routerID[-1]))
+        USED_ROUTER_IDS.append(ROUTER_ID)
 
     
 
@@ -154,7 +155,7 @@ def directConnectGraph():
     counter = 0
     for node in OUTGOING_SOCKETS:
         #print("routerID =", node[2], "metricValue =", node[3])
-        FORWARDING_TABLE.append((int(node[2]), int(node[3]), ROUTER_ID, counter)) 
+        FORWARDING_TABLE.append([int(node[2]), int(node[3]), ROUTER_ID, counter]) 
 
     
     
@@ -191,10 +192,23 @@ def openData(data, addr, queue):
             for input_port_num, metric, router_id in output_ports:
                 if int(addr[1]) == int(input_port_num):
                     r_id = abs(int(router_id))
-                    graph_data = (int(payload.routerID), int(payload.metric), r_id, 0)
-                    FORWARDING_TABLE.append(graph_data)
-                    queue.put(FORWARDING_TABLE)
+                    graph_data = [int(payload.routerID), int(payload.metric), r_id, 0]
+                    if len(FORWARDING_TABLE) > 1:
+                        
+                        #print("is",  int(payload.routerID), "in", USED_ROUTER_IDS)
+                        if int(payload.routerID) not in USED_ROUTER_IDS:
+                            USED_ROUTER_IDS.append(int(payload.routerID))
+                            FORWARDING_TABLE.append(graph_data)
+                            queue.put(FORWARDING_TABLE)
+                        #elif
+
+                    else:
+                        USED_ROUTER_IDS.append(int(payload.routerID))
+                        FORWARDING_TABLE.append(graph_data)
+                        queue.put(FORWARDING_TABLE)                        
+                        
     print(FORWARDING_TABLE)
+    print("USed router ids", USED_ROUTER_IDS)
 
 
 
@@ -226,10 +240,24 @@ def update(q):
             table = q.get(False)
         except:
             print("no new data")
+        for route in table:
+           # for r_id, metric, learnt_from, time_alive in route: 
+            #print("ONE ROUTE + ", route)
+            route[3] = route[3] + 1
+            if route[3] == 6:
+                route[1] = 16
+            if route[3] >= 10:
+                table = delete_link(route, table)
+                
         print_table(table)
-        time.sleep(3)
+        time.sleep(1)
     
-
+def delete_link(route, table):
+    #index = table.index(route)
+    #print("route to be removed at index", index)
+    USED_ROUTER_IDS.remove(route[0])
+    table.remove(route)
+    return table
     
 ########################## MAIN ##########################
     
