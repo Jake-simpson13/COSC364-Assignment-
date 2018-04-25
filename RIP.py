@@ -248,12 +248,13 @@ def make_message():
 next destination """    
 def send():
     global OUTPUTS
-    sock = socket.socket(socket.AF_NET, socket.SOCK_DGRAM)
-    for port in OUTPUTS:
-        message = make_massage()
-        message = message.encode('utf-8')
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    for output in OUTPUTS:
+        print(output)
+        message = make_message()
+        #message = message.encode('utf-8')
         
-        sock.sendto(message("0.0.0.0", port))
+        sock.sendto(str(message).encode('utf-8'), ("127.0.0.1", output[0]))
     
    
    
@@ -284,6 +285,7 @@ def update(q, q1):
                 FORWARDING_TABLE = delete_link(route, FORWARDING_TABLE)
                 
         print_table(FORWARDING_TABLE)
+        send()
         time.sleep(1)
     
 def delete_link(route, table):
