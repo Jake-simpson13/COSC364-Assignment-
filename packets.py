@@ -98,11 +98,22 @@ class Payload:
 '''
 #Test data
 
-x = Payload(2, 40, 7)
+x = Payload(2, 40, 7, 3)
 print(x.payload())
-y = Payload(4, 30, 5)
+y = Payload(4, 30, 5, 3)
 print(y.payload())
-ppayload = x,y
+ppayload = [x,y]
+z = Packet(1, 2, ppayload)
+print(z.packet())
+'''
+'''
+ppayload = []
+x = Payload(2, 40, 7, 3)
+print(x.payload())
+y = Payload(4, 30, 5, 3)
+print(y.payload())
+ppayload.append(x)
+ppayload.append(y)
 z = Packet(1, 2, ppayload)
 print(z.packet())
 '''
