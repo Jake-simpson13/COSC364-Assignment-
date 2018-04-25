@@ -231,11 +231,30 @@ def receive(socket, q, q1):
         openData(data, addr, q, q1)
     
     
+def make_message():
+    command = "2"
+    version = "2"
+    for router in FORWARDING_TABLE:
+        source = router[0]
+
+    pac = Packet(command, version, None)
+    
+    for router in FORWARDING_TABLE:
+        metric = router[1]
+    return pac
+
 
 """ a function called by the receive function, to forward a packet to the 
 next destination """    
 def send():
-    i = 1
+    global OUTPUTS
+    sock = socket.socket(socket.AF_NET, socket.SOCK_DGRAM)
+    for port in OUTPUTS:
+        message = make_massage()
+        message = message.encode('utf-8')
+        
+        sock.sendto(message("0.0.0.0", port))
+    
    
    
 def print_table(table):
