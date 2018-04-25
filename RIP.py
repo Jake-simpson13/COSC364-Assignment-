@@ -15,7 +15,6 @@ INPUT_PORTS = []
 OUTPUTS = []
 USED_ROUTER_IDS = []
 INCOMING_SOCKETS = []
-OUTGOING_SOCKETS = []
 
 LOW_ROUTER_ID_NUMBER = 1
 HIGH_ROUTER_ID_NUMBER = 64000
@@ -132,11 +131,7 @@ def closeSockets():
         for sockID, sock in INCOMING_SOCKETS:
             sock.shutdown(socket.SHUT_RDWR)
             sock.close()
-        for sockID, portno, routerID, metricValue, sock in OUTGOING_SOCKETS: 
-            sock.shutdown(socket.SHUT_RDWR)
-            sock.close()
-        print(INCOMING_SOCKETS)
-        print(OUTGOING_SOCKETS)            
+        print(INCOMING_SOCKETS)           
             
     except OSError: 
         print("Error closing Sockets")
@@ -153,9 +148,7 @@ def closeSockets():
     in a tuple """    
 def directConnectGraph():   
     counter = 0
-    for node in OUTGOING_SOCKETS:
-        #print("routerID =", node[2], "metricValue =", node[3])
-        FORWARDING_TABLE.append([int(node[2]), int(node[3]), ROUTER_ID, counter]) 
+ 
 
     
     
@@ -196,6 +189,7 @@ def openData(data, addr, queue, used_id_q):
                     graph_data = [int(payload.routerID), int(payload.metric), r_id, 0]
                     if len(FORWARDING_TABLE) > 1:
                         
+                        print("is", payload.routerID, "in", [item[0] for item in FORWARDING_TABLE])
                         if int(payload.routerID) not in [item[0] for item in FORWARDING_TABLE]:
                             USED_ROUTER_IDS.append(int(payload.routerID))
                             used_id_q.put(int(payload.routerID))
@@ -216,8 +210,8 @@ def openData(data, addr, queue, used_id_q):
                         #FORWARDING_TABLE.append(graph_data)
                         queue.put(graph_data)                        
                         
-    print(FORWARDING_TABLE)
-    print("Used router ids", USED_ROUTER_IDS)
+    #print(FORWARDING_TABLE)
+    #print("Used router ids", USED_ROUTER_IDS)
 
 
 
@@ -237,10 +231,12 @@ def make_message():
     for router in FORWARDING_TABLE:
         source = router[0]
 
+    payld = []
     pac = Packet(command, version, None)
-    
-    for router in FORWARDING_TABLE:
-        metric = router[1]
+    for route in FORWARDING_TABLE:
+        route_payload = Payload(2, 2, route[0], route[1])
+        payld.append(route_payload)
+    pac.p_payload = payld
     return pac
 
 
@@ -250,17 +246,17 @@ def send():
     global OUTPUTS
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     for output in OUTPUTS:
-        print(output)
+
         message = make_message()
         #message = message.encode('utf-8')
         
-        sock.sendto(str(message).encode('utf-8'), ("127.0.0.1", output[0]))
+        sock.sendto(str(message).encode('utf-8'), ("127.0.0.1", int(output[0][0])))
     
    
    
 def print_table(table):
-    print("Forwarding table: \n", table, "\n\n")
-    print("Used router ids", USED_ROUTER_IDS)
+    print("Forwarding table:\n", table, "\n")
+    print("Used router ids", USED_ROUTER_IDS, "\n\n")
 
    
    
@@ -270,10 +266,9 @@ def update(q, q1):
     while True:
         try:
             FORWARDING_TABLE.append(q.get(False))
-            USED_ROUTER_IDS.append(q1.get(False))
+            USED_ROUTER_IDS.append(q1.get(False))                    
         except:
-            print("no new data")
-
+            print("no new data")      
 
         for route in FORWARDING_TABLE:
            # for r_id, metric, learnt_from, time_alive in route: 
@@ -286,7 +281,7 @@ def update(q, q1):
                 
         print_table(FORWARDING_TABLE)
         send()
-        time.sleep(1)
+        time.sleep(3)
     
 def delete_link(route, table):
     #index = table.index(route)
@@ -306,18 +301,11 @@ def main():
     setupData = readInputFile(configFile)
     incomingSocketSetUp()  
 
-    print()
-    print("Router ID =", ROUTER_ID)
+    print("\nRouter ID =", ROUTER_ID)
 
     directConnectGraph()
     sortGraph(FORWARDING_TABLE)
-    
-    print("Forwarding table \n", FORWARDING_TABLE, "\n")
-    print("OUTGOING SOCKETS \n", OUTGOING_SOCKETS)    
-    print()
 
-    current_processes = []
-    # starts threads, that use two functions receive to receive, then send to forward data
     print(INCOMING_SOCKETS)
     
     
@@ -326,15 +314,10 @@ def main():
     
     for socket in INCOMING_SOCKETS:
         process = Process(target=receive, args=(socket, q, q1, ))
-        current_processes.append(process)
-        
-    for process in current_processes:
-        process.start()   
+        process.start()
 
     update(q, q1)
-    #while True:
-    #    print("parent pipe recvd", parent_conn.recv())
-    
+
     #closeSockets()
 
 if __name__ == "__main__":
