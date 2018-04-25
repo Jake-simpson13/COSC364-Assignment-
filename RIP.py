@@ -195,13 +195,19 @@ def openData(data, addr, queue):
                     graph_data = [int(payload.routerID), int(payload.metric), r_id, 0]
                     if len(FORWARDING_TABLE) > 1:
                         
-                        #print("is",  int(payload.routerID), "in", USED_ROUTER_IDS)
-                        if int(payload.routerID) not in USED_ROUTER_IDS:
+                        if int(payload.routerID) not in [item[0] for item in FORWARDING_TABLE]:
                             USED_ROUTER_IDS.append(int(payload.routerID))
                             FORWARDING_TABLE.append(graph_data)
                             queue.put(FORWARDING_TABLE)
-                        #elif
-
+                        #else:
+                            ##for router in FORWARDING_TABLE:
+                            #root = queue.get()
+                            #print(root)
+                            #print("does", int(payload.routerID), "equal", router[0])
+                            #if int(payload.routerID) == router[0]:
+                                #router[3] = 0
+                                #print("NEW R DETAILS", router)
+                                #queue.put(router)
                     else:
                         USED_ROUTER_IDS.append(int(payload.routerID))
                         FORWARDING_TABLE.append(graph_data)
