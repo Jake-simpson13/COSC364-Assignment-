@@ -16,6 +16,7 @@ OUTPUTS = []
 USED_ROUTER_IDS = []
 INCOMING_SOCKETS = []
 
+TIME_TO_SLEEP = 3
 LOW_ROUTER_ID_NUMBER = 0
 HIGH_ROUTER_ID_NUMBER = 64000
 LOW_PORT_NUMBER = 1024
@@ -150,35 +151,17 @@ def closeSockets():
         sys.exit(1)
 
 
-        
-########################## BELLMAN FORD ALGORITHM ##########################
-    
-""" a graph from the routers given in the config file that have passed all 
-    required tests.
-    Format is:
-    (Router ID, Metric Value, router learnt from, counter) 
-    in a tuple """    
-def directConnectGraph():   
-    counter = 0
-    
- 
-
-    
-    
-""" sort nodes in graph to be ordered in terms of router ID from 
-    smallest to largest """
-def sortGraph(graph):
-    return graph.sort(key=lambda tup: tup[0])
-
-
 ########################## THREAD FUNCTIONS ##########################
 
 """ a function that takes the data from a socket as a string, then creates 
     a new packet, and fills it with data to analyse """
 def openData(packet, queue, used_id_q):
+    global USED_ROUTER_IDS
+    global FORWARDING_TABLE
+    
     i = 4
     pay = ''    
-    # turn Packet object into string and strip of byte indicators
+    # turn Packet object into string and strip off byte indicators
     data_unstripped = str(packet)
     data = data_unstripped[2:-1]
     
@@ -204,25 +187,25 @@ def openData(packet, queue, used_id_q):
     #pac = Packet(command, version, generating_routerID)
     
     
-        #(Router ID, Metric Value, Router Learnt From, Time Loop)
-                    
-        ''' 
-        if pac.gen routerId in forewarding table = old link - reset counter
-        else - put in forwarding table
-        '''
+
         # create a new object to insert into our routing table, or update if already inserted
         graph_data = [int(p_routerID), int(p_metric), int(generating_routerID), 0]            
         print("###########\n",graph_data)
        
-        if int(p_routerID) in [routers[0] for routers in FORWARDING_TABLE]:
-            #index = FORWARDING_TABLE.index(
-            print("router is already known")
-        
+        #if int(p_routerID) in [routers[0] for routers in FORWARDING_TABLE]:
+        j = 0
+        while j < len(USED_ROUTER_IDS):
+            if int(p_routerID) == USED_ROUTER_IDS[j]:
+                print("MATCH")
+                break
+            j+=1
+            
         # if we havent seen this entry before, add it to our FORWARDING TABLE, and save a copy of its ROUTER ID     
-        else:
+        if j >= len(USED_ROUTER_IDS):
             used_id_q.put(int(p_routerID))
             queue.put(graph_data)                
-        
+            
+            
 
 
 
@@ -236,13 +219,17 @@ def receive(socket, q, q1):
         openData(data, q, q1)
     
     
-def make_message():
+def make_message(output):
     command = 2
     version = 2    
     payld = ''
 
     for router in FORWARDING_TABLE:
-        route_payload = Payload(2, 2, str(router[0]), str(router[1]))
+        if int(router[2]) == router[2]:
+            print("Inserting poison reverse")
+            route_payload = Payload(2, 2, str(router[0]), 16)
+        else:    
+            route_payload = Payload(2, 2, str(router[0]), str(router[1]))
         payld += str(route_payload)
 
     pac = Packet(command, version, ROUTER_ID, payld)    
@@ -256,9 +243,16 @@ def send():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     for output in OUTPUTS:
 
-        message = make_message()
+        message = make_message(output)
         sock.sendto(str(message).encode('utf-8'), ("127.0.0.1", int(output[0])))
     
+   
+        
+""" sort nodes in graph to be ordered in terms of router ID from 
+    smallest to largest """
+def sortGraph(graph):
+    return graph.sort(key=lambda tup: tup[0])
+   
    
    
 def print_table(table):
@@ -280,7 +274,7 @@ def update(q, q1):
 
         for route in FORWARDING_TABLE:
            # for r_id, metric, learnt_from, time_alive in route: 
-            #print("ONE ROUTE + ", route)
+
             route[3] = route[3] + 1
             if route[3] == 6:
                 route[1] = 16
@@ -289,19 +283,15 @@ def update(q, q1):
                 
         print_table(FORWARDING_TABLE)
         send()
-        time.sleep(3)
+        time.sleep(TIME_TO_SLEEP)
     
 def delete_link(route, table):
-    #index = table.index(route)
-    #print("route to be removed at index", index)
-    
     print("need to remove", route[2], "from", USED_ROUTER_IDS)
     USED_ROUTER_IDS.remove(route[2])
-    
     table.remove(route)
     return table
     
-###################ROUTER_ID####### MAIN ##########################
+########################## MAIN ##########################
     
         
 def main():
@@ -311,7 +301,7 @@ def main():
 
     print("\nRouter ID =", ROUTER_ID)
 
-    directConnectGraph()
+
     sortGraph(FORWARDING_TABLE)
   
     print(INCOMING_SOCKETS)
