@@ -12,7 +12,7 @@ from packets import *
 
 ROUTER_ID = None
 INPUT_PORTS = []
-OUTPUTS = []
+#OUTPUTS = []
 USED_ROUTER_IDS = []
 INCOMING_SOCKETS = []
 
@@ -77,13 +77,23 @@ def extractValidInputPorts(line):
 """ extract the output ports to set up UDP sockets. returns a list of all valid 
     port numbers between 1024 and 64000 """
 def extractValidOutputPorts(line):
+    global FORWARDING_TABLE
+    global USED_ROUTER_IDS
+    age = 0
     splitline = line.split(" ")
     for lines in splitline:
-        outputPorts = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", lines)
+        #outputPorts = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", lines)
+        outputPorts = re.findall('[0-9]+', lines)
+        
         if outputPorts != []:
-            if portNumberCheck(outputPorts[0]) == True:
-                OUTPUTS.append([outputPorts])
+            if len(outputPorts) == 3:
+                portnum = outputPorts[0]
+                metric = outputPorts[1]
+                router_id = outputPorts[2]
+                FORWARDING_TABLE.append([int(portnum), int(metric), int(router_id), age]) 
+                USED_ROUTER_IDS.append(int(router_id))
 
+        
 
 """ read and extract the router-id, input-ports and outputs """
 def readInputFile(configFile):
@@ -148,6 +158,7 @@ def closeSockets():
     in a tuple """    
 def directConnectGraph():   
     counter = 0
+    
  
 
     
@@ -170,7 +181,7 @@ def openData(data, addr, queue, used_id_q):
     
     recvd_pac.command = data[:1]
     recvd_pac.version = data[1:2]
-    recvd_pac.must_be_0 = data[2:4]
+    recvd_pac.generating_routerID = data[2:4]
     while i < len(data):
         payload = Payload()
         payload.addr_fam_id = data[i:i+2]
@@ -180,39 +191,47 @@ def openData(data, addr, queue, used_id_q):
         payload.must_be_0_4 = data[i+12:i+16]
         payload.metric = data[i+16:i+20]
         i += 20
-        #print(recvd_pac, payload)
-
-        for output_ports in OUTPUTS:
-            for input_port_num, metric, router_id in output_ports:
-                if int(addr[1]) == int(input_port_num):
-                    r_id = abs(int(router_id))
-                    graph_data = [int(payload.routerID), int(payload.metric), r_id, 0]
-                    if len(FORWARDING_TABLE) > 1:
-                        
-                        print("is", payload.routerID, "in", [item[0] for item in FORWARDING_TABLE])
-                        if int(payload.routerID) not in [item[0] for item in FORWARDING_TABLE]:
-                            USED_ROUTER_IDS.append(int(payload.routerID))
-                            used_id_q.put(int(payload.routerID))
-                            FORWARDING_TABLE.append(graph_data)
-                            queue.put(graph_data)
-                        #else:
-                            ##for router in FORWARDING_TABLE:
-                            #root = queue.get()
-                            #print(root)
-                            #print("does", int(payload.routerID), "equal", router[0])
-                            #if int(payload.routerID) == router[0]:
-                                #router[3] = 0
-                                #print("NEW R DETAILS", router)
-                                #queue.put(router)
-                    else:
+        print(recvd_pac, payload)
+        '''
+        for output_ports in FORWARDING_TABLE:
+            
+            print("\n\n\fdhdhgfjdjdhhgfjfg\n\n\n\n")
+            #(Router ID, Metric Value, Router Learnt From, Time Loop)
+                
+            if int(addr[1]) == int(output_ports[0]):
+                r_id = abs(int(output_ports[2]))
+                graph_data = [int(payload.routerID), int(payload.metric), r_id, 0]
+                if len(FORWARDING_TABLE) > 1:
+                    
+                    print("is", payload.routerID, "in", [item[0] for item in FORWARDING_TABLE])
+                    if int(payload.routerID) not in [item[0] for item in FORWARDING_TABLE]:
+                        USED_ROUTER_IDS.append(int(payload.routerID))
                         used_id_q.put(int(payload.routerID))
-                        #USED_ROUTER_IDS.append(int(payload.routerID))
-                        #FORWARDING_TABLE.append(graph_data)
-                        queue.put(graph_data)                        
+                        FORWARDING_TABLE.append(graph_data)
+                        queue.put(graph_data)
+                    
+                    else:
+                        print("\n\n\nALREADY IN FT\n\n\n\n")
+                        
+                        
+                        ##for router in FORWARDING_TABLE:
+                        #root = queue.get()
+                        #print(root)
+                        #print("does", int(payload.routerID), "equal", router[0])
+                        #if int(payload.routerID) == router[0]:
+                            #router[3] = 0
+                            #print("NEW R DETAILS", router)
+                            #queue.put(router)
+                else:
+                    print("\n\n\nhere\n\n\n\n")
+                    used_id_q.put(int(payload.routerID))
+                    #USED_ROUTER_IDS.append(int(payload.routerID))
+                    #FORWARDING_TABLE.append(graph_data)
+                    queue.put(graph_data)                        
                         
     #print(FORWARDING_TABLE)
     #print("Used router ids", USED_ROUTER_IDS)
-
+    '''
 
 
 """ a function called for the receive thread instead of run(). an infinite 
@@ -225,32 +244,32 @@ def receive(socket, q, q1):
         openData(data, addr, q, q1)
     
     
-def make_message():
+def make_message(ROUTER_ID):
     command = "2"
     version = "2"
     for router in FORWARDING_TABLE:
         source = router[0]
 
     payld = []
-    pac = Packet(command, version, None)
+    pac = Packet(command, version, ROUTER_ID, None)
     for route in FORWARDING_TABLE:
         route_payload = Payload(2, 2, route[0], route[1])
         payld.append(route_payload)
     pac.p_payload = payld
-    return pac
+    #print(pac.packet())
+    return pac.packet()
 
 
 """ a function called by the receive function, to forward a packet to the 
 next destination """    
-def send():
-    global OUTPUTS
+def send(ROUTER_ID):
+    print("\n\n\nRouter id =", ROUTER_ID)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    for output in OUTPUTS:
+    for output in FORWARDING_TABLE:
 
-        message = make_message()
-        #message = message.encode('utf-8')
-        
-        sock.sendto(str(message).encode('utf-8'), ("127.0.0.1", int(output[0][0])))
+        message = make_message(ROUTER_ID)
+        print(message)
+        sock.sendto(str(message).encode('utf-8'), ("127.0.0.1", int(output[0])))
     
    
    
@@ -260,7 +279,7 @@ def print_table(table):
 
    
    
-def update(q, q1):
+def update(q, q1, ROUTER_ID):
     global FORWARDING_TABLE
     global USED_ROUTER_IDS
     while True:
@@ -280,15 +299,15 @@ def update(q, q1):
                 FORWARDING_TABLE = delete_link(route, FORWARDING_TABLE)
                 
         print_table(FORWARDING_TABLE)
-        send()
+        send(ROUTER_ID)
         time.sleep(3)
     
 def delete_link(route, table):
     #index = table.index(route)
     #print("route to be removed at index", index)
     
-    print("need to remove", route[0], "from", USED_ROUTER_IDS)
-    USED_ROUTER_IDS.remove(route[0])
+    print("need to remove", route[2], "from", USED_ROUTER_IDS)
+    USED_ROUTER_IDS.remove(route[2])
     
     table.remove(route)
     return table
@@ -305,7 +324,7 @@ def main():
 
     directConnectGraph()
     sortGraph(FORWARDING_TABLE)
-
+  
     print(INCOMING_SOCKETS)
     
     
@@ -316,9 +335,12 @@ def main():
         process = Process(target=receive, args=(socket, q, q1, ))
         process.start()
 
-    update(q, q1)
+    router_id = ROUTER_ID
+    print(router_id)    
+    update(q, q1,ROUTER_ID)
 
     #closeSockets()
+
 
 if __name__ == "__main__":
     main()
