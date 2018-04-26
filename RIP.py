@@ -12,7 +12,7 @@ from packets import *
 
 ROUTER_ID = None
 INPUT_PORTS = []
-#OUTPUTS = []
+OUTPUTS = []
 USED_ROUTER_IDS = []
 INCOMING_SOCKETS = []
 
@@ -78,6 +78,7 @@ def extractValidInputPorts(line):
     port numbers between 1024 and 64000 """
 def extractValidOutputPorts(line):
     global FORWARDING_TABLE
+    global OUTPUTS
     global USED_ROUTER_IDS
     age = 0
     splitline = line.split(" ")
@@ -90,7 +91,8 @@ def extractValidOutputPorts(line):
                 portnum = outputPorts[0]
                 metric = outputPorts[1]
                 router_id = outputPorts[2]
-                FORWARDING_TABLE.append([int(portnum), int(metric), int(router_id), age]) 
+                OUTPUTS.append([int(portnum), int(metric), int(router_id)]) 
+                FORWARDING_TABLE.append([int(router_id), int(metric), ROUTER_ID, age])
                 USED_ROUTER_IDS.append(int(router_id))
 
         
@@ -173,67 +175,54 @@ def sortGraph(graph):
 
 """ a function that takes the data from a socket as a string, then creates 
     a new packet, and fills it with data to analyse """
-def openData(data, addr, queue, used_id_q):
-    global FORWARDING_TABLE
-    global USED_ROUTER_IDS
+def openData(packet, queue, used_id_q):
     i = 4
-    recvd_pac = Packet()
+    pay = ''    
+    # turn Packet object into string and strip of byte indicators
+    data_unstripped = str(packet)
+    data = data_unstripped[2:-1]
     
-    recvd_pac.command = data[:1]
-    recvd_pac.version = data[1:2]
-    recvd_pac.generating_routerID = data[2:4]
+    # get packet header information
+    command = data[:1]
+    version = data[1:2]
+    generating_routerID = data[2:4]
     while i < len(data):
-        payload = Payload()
-        payload.addr_fam_id = data[i:i+2]
-        payload.must_be_0_2 = data[i+2:i+4]
-        payload.ipv4_addr = data[i+4:i+8]
-        payload.routerID = data[i+8:i+12]
-        payload.must_be_0_4 = data[i+12:i+16]
-        payload.metric = data[i+16:i+20]
+        # get packet payload information
+        p_addr_fam_id = data[i:i+2]
+        p_must_be_0_2 = data[i+2:i+4]
+        p_ipv4_addr = data[i+4:i+8]
+        p_routerID = data[i+8:i+12]
+        p_must_be_0_4 = data[i+12:i+16]
+        p_metric = data[i+16:i+20]
         i += 20
-        #print(recvd_pac, payload)
+
+        """
+        to ressemble packet, uncomment lines below and adjust code
+        """
+        #payload = Payload(p_addr_fam_id, p_ipv4_addr, p_routerID, p_metric)
+        #pay += str(payload)
+    #pac = Packet(command, version, generating_routerID)
+    
+    
+        #(Router ID, Metric Value, Router Learnt From, Time Loop)
+                    
+        ''' 
+        if pac.gen routerId in forewarding table = old link - reset counter
+        else - put in forwarding table
+        '''
+        # create a new object to insert into our routing table, or update if already inserted
+        graph_data = [int(p_routerID), int(p_metric), int(generating_routerID), 0]            
+        print("###########\n",graph_data)
+       
+        if int(p_routerID) in [routers[0] for routers in FORWARDING_TABLE]:
+            #index = FORWARDING_TABLE.index(
+            print("router is already known")
         
-        for output_ports in FORWARDING_TABLE:
-            #(Router ID, Metric Value, Router Learnt From, Time Loop)
-                
-            ''' if pac.gen routerId in forewarding table = old link - reset counter
-            else - put in forwarding table
-            '''
-                
-                
-            if int(addr[1]) == int(output_ports[0]):
-                r_id = abs(int(output_ports[2]))
-                graph_data = [int(payload.routerID), int(payload.metric), r_id, 0]
-                if len(FORWARDING_TABLE) > 1:
-                    
-                    print("is", payload.routerID, "in", [item[0] for item in FORWARDING_TABLE])
-                    if int(payload.routerID) not in [item[0] for item in FORWARDING_TABLE]:
-                        USED_ROUTER_IDS.append(int(payload.routerID))
-                        used_id_q.put(int(payload.routerID))
-                        FORWARDING_TABLE.append(graph_data)
-                        queue.put(graph_data)
-                    
-                    else:
-                        print("\n\n\nALREADY IN FT\n\n\n\n")
-                        
-                        
-                        ##for router in FORWARDING_TABLE:
-                        #root = queue.get()
-                        #print(root)
-                        #print("does", int(payload.routerID), "equal", router[0])
-                        #if int(payload.routerID) == router[0]:
-                            #router[3] = 0
-                            #print("NEW R DETAILS", router)
-                            #queue.put(router)
-                else:
-                    print("\n\n\nhere\n\n\n\n")
-                    used_id_q.put(int(payload.routerID))
-                    #USED_ROUTER_IDS.append(int(payload.routerID))
-                    #FORWARDING_TABLE.append(graph_data)
-                    queue.put(graph_data)                        
-                        
-    #print(FORWARDING_TABLE)
-    #print("Used router ids", USED_ROUTER_IDS)
+        # if we havent seen this entry before, add it to our FORWARDING TABLE, and save a copy of its ROUTER ID     
+        else:
+            used_id_q.put(int(p_routerID))
+            queue.put(graph_data)                
+        
 
 
 
@@ -244,34 +233,30 @@ def receive(socket, q, q1):
     while True:
         data, addr = socket[1].recvfrom(1024) # buffer size is 1024 bytes
         print("SOCKET", socket[0], "received from:", addr, "message:", data)
-        openData(data, addr, q, q1)
+        openData(data, q, q1)
     
     
 def make_message():
-    command = "2"
-    version = "2"
-    for router in FORWARDING_TABLE:
-        source = router[0]
+    command = 2
+    version = 2    
+    payld = ''
 
-    payld = []
-    pac = Packet(command, version, ROUTER_ID, None)
-    for route in FORWARDING_TABLE:
-        route_payload = Payload(2, 2, route[0], route[1])
-        payld.append(route_payload)
-    pac.p_payload = payld
-    #print(pac.packet())
-    return pac.packet()
+    for router in FORWARDING_TABLE:
+        route_payload = Payload(2, 2, str(router[0]), str(router[1]))
+        payld += str(route_payload)
+
+    pac = Packet(command, version, ROUTER_ID, payld)    
+    print("Packet =", pac)
+    return pac
 
 
 """ a function called by the receive function, to forward a packet to the 
 next destination """    
 def send():
-    print("\n\n\nRouter id =", ROUTER_ID)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    for output in FORWARDING_TABLE:
+    for output in OUTPUTS:
 
         message = make_message()
-        print(message)
         sock.sendto(str(message).encode('utf-8'), ("127.0.0.1", int(output[0])))
     
    
@@ -279,6 +264,7 @@ def send():
 def print_table(table):
     print("Forwarding table:\n", table, "\n")
     print("Used router ids", USED_ROUTER_IDS, "\n\n")
+    print("Directly connected neighbours", OUTPUTS)
 
    
    
