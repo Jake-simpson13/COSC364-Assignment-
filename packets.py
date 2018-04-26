@@ -7,26 +7,30 @@ class Packet:
     # version = version (1) (version of the rip protocol used - always 2)
     # payload = RIP entries (20) (between 1 - 25 inc, otherwise multiple packets)   
 
-    def __init__(self, command=None, version=None, p_payload=None):
+    def __init__(self, command=None, version=None, generating_routerID=None, p_payload=None):
+        
         if len(str(command)) == 1:
             self.command = command
         
         if len(str(version)) == 1:    
             self.version = version
             
-        self.must_be_0 = '00'
+        if len(str(generating_routerID)) == 2:
+            self.generating_routerID = str(generating_routerID)
+        elif len(str(generating_routerID)) == 1:
+            self.generating_routerID = "0" + str(generating_routerID)
         
         self.p_payload = p_payload
         
 
     def __str__(self):
-        string = str(self.command) + str(self.version) + str(self.must_be_0)
+        string = str(self.command) + str(self.version) + str(self.generating_routerID)
         string += str(self.p_payload)
         return string
         
     
     def packet(self):
-        value = str(self.command) + str(self.version)
+        value = str(self.command) + str(self.version) + str(self.generating_routerID)
         for pay in self.p_payload:
             value += str(pay.addr_fam_id)
             value += str(pay.must_be_0_2)
@@ -109,11 +113,13 @@ print(z.packet())
 '''
 ppayload = []
 x = Payload(2, 40, 7, 3)
-print(x.payload())
+#print(x.payload())
 y = Payload(4, 30, 5, 3)
-print(y.payload())
+#print(y.payload())
 ppayload.append(x)
 ppayload.append(y)
-z = Packet(1, 2, ppayload)
+#z = Packet(1, 2, 35, None)
+#print(z.packet())
+z = Packet(1, 2, 35, ppayload)
 print(z.packet())
 '''
