@@ -16,7 +16,7 @@ INPUT_PORTS = []
 USED_ROUTER_IDS = []
 INCOMING_SOCKETS = []
 
-LOW_ROUTER_ID_NUMBER = 1
+LOW_ROUTER_ID_NUMBER = 0
 HIGH_ROUTER_ID_NUMBER = 64000
 LOW_PORT_NUMBER = 1024
 HIGH_PORT_NUMBER = 64000
@@ -191,12 +191,15 @@ def openData(data, addr, queue, used_id_q):
         payload.must_be_0_4 = data[i+12:i+16]
         payload.metric = data[i+16:i+20]
         i += 20
-        print(recvd_pac, payload)
-        '''
+        #print(recvd_pac, payload)
+        
         for output_ports in FORWARDING_TABLE:
-            
-            print("\n\n\fdhdhgfjdjdhhgfjfg\n\n\n\n")
             #(Router ID, Metric Value, Router Learnt From, Time Loop)
+                
+            ''' if pac.gen routerId in forewarding table = old link - reset counter
+            else - put in forwarding table
+            '''
+                
                 
             if int(addr[1]) == int(output_ports[0]):
                 r_id = abs(int(output_ports[2]))
@@ -231,7 +234,7 @@ def openData(data, addr, queue, used_id_q):
                         
     #print(FORWARDING_TABLE)
     #print("Used router ids", USED_ROUTER_IDS)
-    '''
+
 
 
 """ a function called for the receive thread instead of run(). an infinite 
@@ -244,7 +247,7 @@ def receive(socket, q, q1):
         openData(data, addr, q, q1)
     
     
-def make_message(ROUTER_ID):
+def make_message():
     command = "2"
     version = "2"
     for router in FORWARDING_TABLE:
@@ -262,12 +265,12 @@ def make_message(ROUTER_ID):
 
 """ a function called by the receive function, to forward a packet to the 
 next destination """    
-def send(ROUTER_ID):
+def send():
     print("\n\n\nRouter id =", ROUTER_ID)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     for output in FORWARDING_TABLE:
 
-        message = make_message(ROUTER_ID)
+        message = make_message()
         print(message)
         sock.sendto(str(message).encode('utf-8'), ("127.0.0.1", int(output[0])))
     
@@ -279,7 +282,7 @@ def print_table(table):
 
    
    
-def update(q, q1, ROUTER_ID):
+def update(q, q1):
     global FORWARDING_TABLE
     global USED_ROUTER_IDS
     while True:
@@ -299,7 +302,7 @@ def update(q, q1, ROUTER_ID):
                 FORWARDING_TABLE = delete_link(route, FORWARDING_TABLE)
                 
         print_table(FORWARDING_TABLE)
-        send(ROUTER_ID)
+        send()
         time.sleep(3)
     
 def delete_link(route, table):
@@ -312,7 +315,7 @@ def delete_link(route, table):
     table.remove(route)
     return table
     
-########################## MAIN ##########################
+###################ROUTER_ID####### MAIN ##########################
     
         
 def main():
@@ -333,11 +336,8 @@ def main():
     
     for socket in INCOMING_SOCKETS:
         process = Process(target=receive, args=(socket, q, q1, ))
-        process.start()
-
-    router_id = ROUTER_ID
-    print(router_id)    
-    update(q, q1,ROUTER_ID)
+        process.start() 
+    update(q, q1)
 
     #closeSockets()
 
