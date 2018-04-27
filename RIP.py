@@ -232,7 +232,20 @@ def make_message(output):
         if int(output[2]) == int(router[2]):
             print("Inserting poison reverse")
             route_payload = Payload(2, 2, str(router[0]), 16)
-        else:    
+        
+        else:  
+            
+            #if rcvd_link[0] in [item[2] for item in OUTPUTS]:
+            k = 0
+            while  k < len(OUTPUTS):
+                print("does", router[0], "=", OUTPUTS[k][2])
+                if router[0] == OUTPUTS[k][2]:
+                    print("changing ", router[1], "to", OUTPUTS[k][1])
+                    router[1] = OUTPUTS[k][1]
+                    break
+                k+=1            
+            
+            
             route_payload = Payload(2, 2, str(router[0]), str(router[1]))
         payld += str(route_payload)
 
@@ -281,30 +294,29 @@ def update(q, q1):
                 while j < len(FORWARDING_TABLE):
                     if rcvd_link[0] == FORWARDING_TABLE[j][0]:
                         FORWARDING_TABLE[j][3] = 0
+                        if rcvd_link[1] < FORWARDING_TABLE[j][1]:
+                            FORWARDING_TABLE[j][1] = rcvd_link[1]
+                            FORWARDING_TABLE[j][2] = rcvd_link[2]
+                        
                         break
                     j+=1
-                
-                
-                #print("link in fwding table")
-                
-                
-                
+                    
             else:
+                print("#############\n",rcvd_link)
                 FORWARDING_TABLE.append(rcvd_link)
-            
-            
-            
-            
-            
-            
-            
-            USED_ROUTER_IDS.append(q1.get(False))                    
+                        
+            #USED_ROUTER_IDS.append(q1.get(False))                    
         except:
             print("no new data")      
 
         for route in FORWARDING_TABLE:
            # for r_id, metric, learnt_from, time_alive in route: 
             if route[0] in [item[0] for item in FORWARDING_TABLE]:
+                # dont increment any metric or TTL ints if we are looking at ourself
+                if route[0] == ROUTER_ID:
+                    continue
+                
+                # increment time to live counter
                 route[3] = route[3] + 1
                 if route[3] == 6:
                     route[1] = 16
@@ -332,7 +344,9 @@ def main():
     incomingSocketSetUp()  
 
     print("\nRouter ID =", ROUTER_ID)
-
+    
+    # add ourself to the forwarding table
+    FORWARDING_TABLE.append([ROUTER_ID, 0, ROUTER_ID,0])
 
     sortGraph(FORWARDING_TABLE)
   
