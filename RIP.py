@@ -165,6 +165,8 @@ def openData(packet, queue, used_id_q):
     data_unstripped = str(packet)
     data = data_unstripped[2:-1]
     
+    packet_info = []
+    
     # get packet header information
     command = data[:1]
     version = data[1:2]
@@ -179,37 +181,13 @@ def openData(packet, queue, used_id_q):
         p_metric = data[i+16:i+20]
         i += 20
 
-        """
-        to ressemble packet, uncomment lines below and adjust code
-        """
-        '''
-        #payload = Payload(p_addr_fam_id, p_ipv4_addr, p_routerID, p_metric)
-        #pay += str(payload)
-    #pac = Packet(command, version, generating_routerID)
-        '''
-
         # create a new object to insert into our routing table, or update if already inserted
         graph_data = [int(p_routerID), int(p_metric), int(generating_routerID), 0]            
-        print("###########\n",graph_data)
+        packet_info.append(graph_data)
         
-        # put object into queue to be sorted by main programme    
-        queue.put(graph_data)  
+    # put object into queue to be sorted by main programme    
+    queue.put(packet_info)  
        
-        '''
-            #if int(p_routerID) in [routers[0] for routers in FORWARDING_TABLE]:
-            j = 0
-            while j < len(USED_ROUTER_IDS):
-                if int(p_routerID) == USED_ROUTER_IDS[j]:
-                    print("MATCH")
-                    break
-                j+=1
-                
-            # if we havent seen this entry before, add it to our FORWARDING TABLE, and save a copy of its ROUTER ID     
-            if j >= len(USED_ROUTER_IDS):
-                used_id_q.put(int(p_routerID))
-                queue.put(graph_data)                
-        '''   
-            
 
 
 
@@ -219,7 +197,6 @@ def receive(socket, q, q1):
     
     while True:
         data, addr = socket[1].recvfrom(1024) # buffer size is 1024 bytes
-        print("SOCKET", socket[0], "received from:", addr, "message:", data)
         openData(data, q, q1)
     
     
@@ -230,7 +207,6 @@ def make_message(output):
 
     for router in FORWARDING_TABLE:
         if int(output[2]) == int(router[2]):
-            print("Inserting poison reverse")
             route_payload = Payload(2, 2, str(router[0]), 16)
         
         else:  
@@ -238,9 +214,7 @@ def make_message(output):
             #if rcvd_link[0] in [item[2] for item in OUTPUTS]:
             k = 0
             while  k < len(OUTPUTS):
-                print("does", router[0], "=", OUTPUTS[k][2])
                 if router[0] == OUTPUTS[k][2]:
-                    print("changing ", router[1], "to", OUTPUTS[k][1])
                     router[1] = OUTPUTS[k][1]
                     break
                 k+=1            
@@ -250,7 +224,6 @@ def make_message(output):
         payld += str(route_payload)
 
     pac = Packet(command, version, ROUTER_ID, payld)    
-    print("Packet =", pac)
     return pac
 
 
@@ -273,10 +246,12 @@ def sortGraph(graph):
    
    
 def print_table(table):
-    print("Forwarding table:\n", table, "\n")
-    print("Used router ids", USED_ROUTER_IDS, "\n\n")
+    
     print("Directly connected neighbours", OUTPUTS)
-
+    print("Used router ids", USED_ROUTER_IDS)
+    print("Forwarding table:")
+    for tab in FORWARDING_TABLE:
+        print(tab)
    
    
 def update(q, q1):
@@ -284,60 +259,65 @@ def update(q, q1):
     global USED_ROUTER_IDS
     while True:
         try:
-            #FORWARDING_TABLE.append(q.get(False))
+            # recieve a list of links from a thread
             rcvd_link = q.get(False)
-            print(rcvd_link)
-            print("is", rcvd_link[0], "in", [item[0] for item in FORWARDING_TABLE])
+            
+            for link in rcvd_link:
+            
+    
+                #start a loop to find the index if the router id IF the routerID is in the table
 
-            #start a loop to find the index if the router id IF the routerID is in the table
-            j = 0
-            while j < len(FORWARDING_TABLE):
-                #if the recieved links router ID equals an entry in the forwarding table
-                if rcvd_link[0] == FORWARDING_TABLE[j][0]:
-                    # reset the time to live to 0
-                    FORWARDING_TABLE[j][3] = 0
-                    # if the recieved link has a lesser cost to the router
-                    '''
-                    if (rcvd_link[1] < FORWARDING_TABLE[j][1]):
-                        # if the received routerID is in the list of directly connected routers
-                        if rcvd_link[0] in [item[3] for item in OUTPUTS]:
-                            # update the link with the new cost
-                            FORWARDING_TABLE[j][1] = rcvd_link[1]
-                            FORWARDING_TABLE[j][2] = rcvd_link[2]                        
-                    '''
-                    break
-                j+=1
-                
-            if j >= len(FORWARDING_TABLE):
-                print("#############\n",rcvd_link)
-                FORWARDING_TABLE.append(rcvd_link)
-            #USED_ROUTER_IDS.append(q1.get(False))                    
+
+                j = 0
+                while j < len(FORWARDING_TABLE):
+                    #if the recieved link routerID equals an entry in the forwarding table
+                    if link[0] == FORWARDING_TABLE[j][0]:
+                        # reset the time to live to 0
+                        FORWARDING_TABLE[j][3] = 0
+                        
+                        # if the recieved link has a lesser cost to the router
+                        '''
+                        if (rcvd_link[1] < FORWARDING_TABLE[j][1]):
+                            # if the received routerID is in the list of directly connected routers
+                            if rcvd_link[0] in [item[3] for item in OUTPUTS]:
+                                # update the link with the new cost
+                                FORWARDING_TABLE[j][1] = rcvd_link[1]
+                                FORWARDING_TABLE[j][2] = rcvd_link[2]                        
+                        '''
+                        break
+                    j+=1
+                    
+                if j >= len(FORWARDING_TABLE):
+                    FORWARDING_TABLE.append(link)
+                #USED_ROUTER_IDS.append(q1.get(False))
+            
         except:
             print("no new data")      
 
 
+
+            
         for route in FORWARDING_TABLE:
            # for r_id, metric, learnt_from, time_alive in route: 
-            if route[0] in [item[0] for item in FORWARDING_TABLE]:
-                # dont increment any metric or TTL ints if we are looking at ourself
-                if route[0] == ROUTER_ID:
-                    continue
+            #if route[0] in [item[0] for item in FORWARDING_TABLE]:
+                # dont increment any metric or TTL ints if we are looking at ourselves
+            if route[0] == ROUTER_ID:
+                continue
+            
+            # increment time to live counter
+            route[3] = route[3] + 1
+            if route[3] >= 6:
+                index = FORWARDING_TABLE.index(route)
+                route[1] = 16
+                FORWARDING_TABLE[index][1] = 16
+            if route[3] >= 10:
+                FORWARDING_TABLE = delete_link(route, FORWARDING_TABLE)
                 
-                # increment time to live counter
-                route[3] = route[3] + 1
-                if route[3] >= 6:
-                    route[1] = 16
-                if route[3] >= 10:
-                    FORWARDING_TABLE = delete_link(route, FORWARDING_TABLE)
-            else:
-                print("here")
-                
-        print_table(FORWARDING_TABLE)
+        print_table(FORWARDING_TABLE)        
         send()
         time.sleep(TIME_TO_SLEEP)
     
 def delete_link(route, table):
-    print("need to remove", route[2], "from", USED_ROUTER_IDS)
     USED_ROUTER_IDS.remove(route[2])
     table.remove(route)
     return table
