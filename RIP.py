@@ -288,26 +288,33 @@ def update(q, q1):
             rcvd_link = q.get(False)
             print(rcvd_link)
             print("is", rcvd_link[0], "in", [item[0] for item in FORWARDING_TABLE])
-            # if the received router id is in the forawrding table already 
-            if rcvd_link[0] in [item[0] for item in FORWARDING_TABLE]:
-                #start a loop to find the index
-                j = 0
-                while j < len(FORWARDING_TABLE):
-                    #if the recieved links router ID equals an entry in the forwarding table
-                    if rcvd_link[0] == FORWARDING_TABLE[j][0]:
-                        FORWARDING_TABLE[j][3] = 0
-                        if (rcvd_link[1] < FORWARDING_TABLE[j][1]):
-                            if rcvd_link[1] in [item[3] for item in OUTPUTS]:
-                                FORWARDING_TABLE[j][1] = rcvd_link[1]
-                                FORWARDING_TABLE[j][2] = rcvd_link[2]                        
-                        break
-                    j+=1
-            else:
+
+            #start a loop to find the index if the router id IF the routerID is in the table
+            j = 0
+            while j < len(FORWARDING_TABLE):
+                #if the recieved links router ID equals an entry in the forwarding table
+                if rcvd_link[0] == FORWARDING_TABLE[j][0]:
+                    # reset the time to live to 0
+                    FORWARDING_TABLE[j][3] = 0
+                    # if the recieved link has a lesser cost to the router
+                    '''
+                    if (rcvd_link[1] < FORWARDING_TABLE[j][1]):
+                        # if the received routerID is in the list of directly connected routers
+                        if rcvd_link[0] in [item[3] for item in OUTPUTS]:
+                            # update the link with the new cost
+                            FORWARDING_TABLE[j][1] = rcvd_link[1]
+                            FORWARDING_TABLE[j][2] = rcvd_link[2]                        
+                    '''
+                    break
+                j+=1
+                
+            if j >= len(FORWARDING_TABLE):
                 print("#############\n",rcvd_link)
                 FORWARDING_TABLE.append(rcvd_link)
             #USED_ROUTER_IDS.append(q1.get(False))                    
         except:
             print("no new data")      
+
 
         for route in FORWARDING_TABLE:
            # for r_id, metric, learnt_from, time_alive in route: 
@@ -318,7 +325,7 @@ def update(q, q1):
                 
                 # increment time to live counter
                 route[3] = route[3] + 1
-                if route[3] == 6:
+                if route[3] >= 6:
                     route[1] = 16
                 if route[3] >= 10:
                     FORWARDING_TABLE = delete_link(route, FORWARDING_TABLE)
