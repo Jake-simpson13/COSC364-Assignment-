@@ -182,16 +182,20 @@ def openData(packet, queue, used_id_q):
         """
         to ressemble packet, uncomment lines below and adjust code
         """
+        '''
         #payload = Payload(p_addr_fam_id, p_ipv4_addr, p_routerID, p_metric)
         #pay += str(payload)
     #pac = Packet(command, version, generating_routerID)
-    
-    
+        '''
 
-        # create a new object to insert into our routing table, or update if already inserted
-        graph_data = [int(p_routerID), int(p_metric), int(generating_routerID), 0]            
-        print("###########\n",graph_data)
+    # create a new object to insert into our routing table, or update if already inserted
+    graph_data = [int(p_routerID), int(p_metric), int(generating_routerID), 0]            
+    print("###########\n",graph_data)
+    
+    # put object into queue to be sorted by main programme    
+    queue.put(graph_data)  
        
+    '''
         #if int(p_routerID) in [routers[0] for routers in FORWARDING_TABLE]:
         j = 0
         while j < len(USED_ROUTER_IDS):
@@ -204,7 +208,7 @@ def openData(packet, queue, used_id_q):
         if j >= len(USED_ROUTER_IDS):
             used_id_q.put(int(p_routerID))
             queue.put(graph_data)                
-            
+    '''   
             
 
 
@@ -225,7 +229,7 @@ def make_message(output):
     payld = ''
 
     for router in FORWARDING_TABLE:
-        if int(router[2]) == router[2]:
+        if int(output[2]) == int(router[2]):
             print("Inserting poison reverse")
             route_payload = Payload(2, 2, str(router[0]), 16)
         else:    
@@ -274,12 +278,14 @@ def update(q, q1):
 
         for route in FORWARDING_TABLE:
            # for r_id, metric, learnt_from, time_alive in route: 
-
-            route[3] = route[3] + 1
-            if route[3] == 6:
-                route[1] = 16
-            if route[3] >= 10:
-                FORWARDING_TABLE = delete_link(route, FORWARDING_TABLE)
+            if route[0] in [item[0] for item in FORWARDING_TABLE]:
+                route[3] = route[3] + 1
+                if route[3] == 6:
+                    route[1] = 16
+                if route[3] >= 10:
+                    FORWARDING_TABLE = delete_link(route, FORWARDING_TABLE)
+            else:
+                print("here")
                 
         print_table(FORWARDING_TABLE)
         send()
