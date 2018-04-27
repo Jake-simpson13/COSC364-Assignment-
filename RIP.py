@@ -93,7 +93,7 @@ def extractValidOutputPorts(line):
                 metric = outputPorts[1]
                 router_id = outputPorts[2]
                 OUTPUTS.append([int(portnum), int(metric), int(router_id)]) 
-                FORWARDING_TABLE.append([int(router_id), int(metric), ROUTER_ID, age])
+                #FORWARDING_TABLE.append([int(router_id), int(metric), ROUTER_ID, age])
                 USED_ROUTER_IDS.append(int(router_id))
 
         
@@ -188,27 +188,27 @@ def openData(packet, queue, used_id_q):
     #pac = Packet(command, version, generating_routerID)
         '''
 
-    # create a new object to insert into our routing table, or update if already inserted
-    graph_data = [int(p_routerID), int(p_metric), int(generating_routerID), 0]            
-    print("###########\n",graph_data)
-    
-    # put object into queue to be sorted by main programme    
-    queue.put(graph_data)  
+        # create a new object to insert into our routing table, or update if already inserted
+        graph_data = [int(p_routerID), int(p_metric), int(generating_routerID), 0]            
+        print("###########\n",graph_data)
+        
+        # put object into queue to be sorted by main programme    
+        queue.put(graph_data)  
        
-    '''
-        #if int(p_routerID) in [routers[0] for routers in FORWARDING_TABLE]:
-        j = 0
-        while j < len(USED_ROUTER_IDS):
-            if int(p_routerID) == USED_ROUTER_IDS[j]:
-                print("MATCH")
-                break
-            j+=1
-            
-        # if we havent seen this entry before, add it to our FORWARDING TABLE, and save a copy of its ROUTER ID     
-        if j >= len(USED_ROUTER_IDS):
-            used_id_q.put(int(p_routerID))
-            queue.put(graph_data)                
-    '''   
+        '''
+            #if int(p_routerID) in [routers[0] for routers in FORWARDING_TABLE]:
+            j = 0
+            while j < len(USED_ROUTER_IDS):
+                if int(p_routerID) == USED_ROUTER_IDS[j]:
+                    print("MATCH")
+                    break
+                j+=1
+                
+            # if we havent seen this entry before, add it to our FORWARDING TABLE, and save a copy of its ROUTER ID     
+            if j >= len(USED_ROUTER_IDS):
+                used_id_q.put(int(p_routerID))
+                queue.put(graph_data)                
+        '''   
             
 
 
@@ -271,7 +271,33 @@ def update(q, q1):
     global USED_ROUTER_IDS
     while True:
         try:
-            FORWARDING_TABLE.append(q.get(False))
+            #FORWARDING_TABLE.append(q.get(False))
+            rcvd_link = q.get(False)
+            print(rcvd_link)
+            print("is", rcvd_link[0], "in", [item[0] for item in FORWARDING_TABLE])
+            if rcvd_link[0] in [item[0] for item in FORWARDING_TABLE]:
+                
+                j = 0
+                while j < len(FORWARDING_TABLE):
+                    if rcvd_link[0] == FORWARDING_TABLE[j][0]:
+                        FORWARDING_TABLE[j][3] = 0
+                        break
+                    j+=1
+                
+                
+                #print("link in fwding table")
+                
+                
+                
+            else:
+                FORWARDING_TABLE.append(rcvd_link)
+            
+            
+            
+            
+            
+            
+            
             USED_ROUTER_IDS.append(q1.get(False))                    
         except:
             print("no new data")      
