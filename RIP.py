@@ -1,13 +1,11 @@
 import os
+import sys
 import re
 import socket
 import time
-import math
-import select
-import sys
+
 
 from multiprocessing import *
-from threading import *
 from packets import *
 
 ROUTER_ID = None
@@ -84,7 +82,6 @@ def extractValidOutputPorts(line):
     age = 0
     splitline = line.split(" ")
     for lines in splitline:
-        #outputPorts = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", lines)
         outputPorts = re.findall('[0-9]+', lines)
         
         if outputPorts != []:
@@ -93,7 +90,6 @@ def extractValidOutputPorts(line):
                 metric = outputPorts[1]
                 router_id = outputPorts[2]
                 OUTPUTS.append([int(portnum), int(metric), int(router_id)]) 
-                #FORWARDING_TABLE.append([int(router_id), int(metric), ROUTER_ID, age])
                 USED_ROUTER_IDS.append(int(router_id))
 
         
@@ -137,6 +133,7 @@ def incomingSocketSetUp():
             print("Socket already bound \n\n")
             sys.exit(1)
         
+        
 
 """ close all open sockets """
 def closeSockets():
@@ -149,13 +146,16 @@ def closeSockets():
     except OSError: 
         print("Error closing Sockets")
         sys.exit(1)
+    
+    finally:
+        sys.exit(0)
 
 
-########################## THREAD FUNCTIONS ##########################
+########################## PROCESS FUNCTIONS ##########################
 
 """ a function that takes the data from a socket as a string, then creates 
     a new packet, and fills it with data to analyse """
-def openData(packet, queue, used_id_q):
+def openData(packet, queue):
     global USED_ROUTER_IDS
     global FORWARDING_TABLE
     
@@ -190,74 +190,74 @@ def openData(packet, queue, used_id_q):
        
 
 
-
 """ a function called for the receive thread instead of run(). an infinite 
 loop that checks incoming sockets, and forwards accordingly or drops """
-def receive(socket, q, q1):
+def receive(socket, queue):
     
     while True:
         data, addr = socket[1].recvfrom(1024) # buffer size is 1024 bytes
-        openData(data, q, q1)
-    
-    
+        openData(data, queue)
+        
+        
+########################## FORWARDING FUNCTIONS ##########################
+        
+""" a function that makes a packet to send to the output links """    
 def make_message(output):
     command = 2
     version = 2    
     payld = ''
 
+    # make a specialised packet for each output
     for router in FORWARDING_TABLE:
+        #if the router we learnt a link from is the router we are making a packet for
         if int(output[2]) == int(router[2]):
-            route_payload = Payload(2, 2, str(router[0]), 16)
-        
-        else:  
+            # set metric to 16
+            route_payload = Payload(2, 2, str(router[0]), 16)       
             
-            #if rcvd_link[0] in [item[2] for item in OUTPUTS]:
+        else:              
             k = 0
             while  k < len(OUTPUTS):
+                # if the router we are sending the data to is a router we learnt the link for
                 if router[0] == OUTPUTS[k][2]:
-                    router[1] = OUTPUTS[k][1]
+                    # set metric to the link cost
+                    router[1] = OUTPUTS[k][1] 
                     break
                 k+=1            
             
-            
+            # turn the variables into an Payload object
             route_payload = Payload(2, 2, str(router[0]), str(router[1]))
+        # turn the payload to a string and add to a string
         payld += str(route_payload)
-
+    #create a Packet object to send
     pac = Packet(command, version, ROUTER_ID, payld)    
     return pac
+
 
 
 """ a function called by the receive function, to forward a packet to the 
 next destination """    
 def send():
+    # create UDP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # for each output - make a packet and send using a UDP port
     for output in OUTPUTS:
-
         message = make_message(output)
         sock.sendto(str(message).encode('utf-8'), ("127.0.0.1", int(output[0])))
     
-   
-        
-""" sort nodes in graph to be ordered in terms of router ID from 
-    smallest to largest """
-def sortGraph(graph):
-    return graph.sort(key=lambda tup: tup[0])
-   
-   
-   
+
+
+""" prints the forwarding table """   
 def print_table(table):
-    
-    print("Directly connected neighbours", OUTPUTS)
-    print("Used router ids", USED_ROUTER_IDS)
-    print("\nForwarding table:")
-    
-    for tab in FORWARDING_TABLE:
-        print(tab)
+    print("Forwarding table:")
+    print("ID, Metric, Learnt From, TTL(x30sec)")
+    for line in FORWARDING_TABLE:
+        print(line)
+    print()
    
    
    
-   
-   
+""" a function to take an individual link and process it, by adding it to the 
+    FORWARDING_TABLE if not present, otherwise reset counter to 0 """
 def process_link(link):
     global FORWARDING_TABLE
     j = 0
@@ -278,72 +278,75 @@ def process_link(link):
             '''
             break
         j+=1
-        
+    # if the link has not yet been discovered    
     if j >= len(FORWARDING_TABLE):
+        got_from = link[0]
+        link_cost = 0
+      
         FORWARDING_TABLE.append(link)
         
         
-
-            
-            
-   
-def update(q, q1):
+         
+""" a function that monitors the queues that act as pipes, from the individual 
+   processes. to the main programme. When a link or an array of links has been 
+   discovered, we split them up to individual links and pass to the process link
+   function """
+def update(queue):
     global FORWARDING_TABLE
     global USED_ROUTER_IDS
     while True:
         try:
-            # recieve a list of links from a thread
-            
+            # recieve a list of links from a process
             while True:
-                rcvd_link = q.get(False)
-                
-                
+                rcvd_link = queue.get(False)
+                # if only one link has been posted
                 for link in rcvd_link:
-                
+                    # see if we recieved multiple links in one packet
                     try:
                         for li in link:
+                            # process multiple links
                             process_link(li)
                     except:
-                        
-                        #start a loop to find the index if the router id IF the routerID is in the table
-    
+                        # process the one link
                         process_link(link)
-                
-                #USED_ROUTER_IDS.append(q1.get(False))
-            
+        # no data waiting for us from the queue - move on            
         except:
-            print("no new data")      
+            #print("no new data")
+            i = 1      
         
-
-
-            
+        # go through all lists in the forwarding table
         for route in FORWARDING_TABLE:
-           # for r_id, metric, learnt_from, time_alive in route: 
-            #if route[0] in [item[0] for item in FORWARDING_TABLE]:
-                # dont increment any metric or TTL ints if we are looking at ourselves
+            # dont increment TTL feild in FORWARDING TABLE if we are looking at ourself
             if route[0] == ROUTER_ID:
                 continue
             
             # increment time to live counter
             route[3] = route[3] + 1
+            # if the link is 6 rotations old without an update, set cost to 16
             if route[3] >= 6:
                 index = FORWARDING_TABLE.index(route)
                 route[1] = 16
                 FORWARDING_TABLE[index][1] = 16
+            # or if the link has expired, delete link    
             if route[3] >= 10:
                 FORWARDING_TABLE = delete_link(route, FORWARDING_TABLE)
-                
+        # print table        
         print_table(FORWARDING_TABLE)        
+        # create new packets to send
         send()
+        # wait
         time.sleep(TIME_TO_SLEEP)
-    
+
+
+
+""" delete a dead link out of the FORWARDING TABLE """    
 def delete_link(route, table):
     USED_ROUTER_IDS.remove(route[2])
     table.remove(route)
     return table
     
-########################## MAIN ##########################
     
+########################## MAIN ##########################
         
 def main():
     configFile = getInputFile()
@@ -353,22 +356,16 @@ def main():
     print("\nRouter ID =", ROUTER_ID)
     
     # add ourself to the forwarding table
-    FORWARDING_TABLE.append([ROUTER_ID, 0, ROUTER_ID,0])
-
-    sortGraph(FORWARDING_TABLE)
-  
-    print(INCOMING_SOCKETS)
-    
-    
-    q = Queue()
-    q1 = Queue()
+    FORWARDING_TABLE.append([ROUTER_ID, 0, ROUTER_ID,0])    
+    # start a queue for the processes to pass links back to the main programme
+    queue = Queue()
     
     for socket in INCOMING_SOCKETS:
-        process = Process(target=receive, args=(socket, q, q1, ))
+        process = Process(target=receive, args=(socket, queue, ))
         process.start() 
-    update(q, q1)
+    update(queue)
 
-    #closeSockets()
+    closeSockets()
 
 
 if __name__ == "__main__":
