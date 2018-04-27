@@ -249,10 +249,43 @@ def print_table(table):
     
     print("Directly connected neighbours", OUTPUTS)
     print("Used router ids", USED_ROUTER_IDS)
-    print("Forwarding table:")
+    print("\nForwarding table:")
+    
     for tab in FORWARDING_TABLE:
         print(tab)
    
+   
+   
+   
+   
+def process_link(link):
+    global FORWARDING_TABLE
+    j = 0
+    while j < len(FORWARDING_TABLE):
+        #if the recieved link routerID equals an entry in the forwarding table
+        if link[0] == FORWARDING_TABLE[j][0]:
+            # reset the time to live to 0
+            FORWARDING_TABLE[j][3] = 0
+            
+            # if the recieved link has a lesser cost to the router
+            '''
+            if (rcvd_link[1] < FORWARDING_TABLE[j][1]):
+                # if the received routerID is in the list of directly connected routers
+                if rcvd_link[0] in [item[3] for item in OUTPUTS]:
+                    # update the link with the new cost
+                    FORWARDING_TABLE[j][1] = rcvd_link[1]
+                    FORWARDING_TABLE[j][2] = rcvd_link[2]                        
+            '''
+            break
+        j+=1
+        
+    if j >= len(FORWARDING_TABLE):
+        FORWARDING_TABLE.append(link)
+        
+        
+
+            
+            
    
 def update(q, q1):
     global FORWARDING_TABLE
@@ -260,40 +293,27 @@ def update(q, q1):
     while True:
         try:
             # recieve a list of links from a thread
-            rcvd_link = q.get(False)
             
-            for link in rcvd_link:
-            
-    
-                #start a loop to find the index if the router id IF the routerID is in the table
-
-
-                j = 0
-                while j < len(FORWARDING_TABLE):
-                    #if the recieved link routerID equals an entry in the forwarding table
-                    if link[0] == FORWARDING_TABLE[j][0]:
-                        # reset the time to live to 0
-                        FORWARDING_TABLE[j][3] = 0
+            while True:
+                rcvd_link = q.get(False)
+                
+                
+                for link in rcvd_link:
+                
+                    try:
+                        for li in link:
+                            process_link(li)
+                    except:
                         
-                        # if the recieved link has a lesser cost to the router
-                        '''
-                        if (rcvd_link[1] < FORWARDING_TABLE[j][1]):
-                            # if the received routerID is in the list of directly connected routers
-                            if rcvd_link[0] in [item[3] for item in OUTPUTS]:
-                                # update the link with the new cost
-                                FORWARDING_TABLE[j][1] = rcvd_link[1]
-                                FORWARDING_TABLE[j][2] = rcvd_link[2]                        
-                        '''
-                        break
-                    j+=1
-                    
-                if j >= len(FORWARDING_TABLE):
-                    FORWARDING_TABLE.append(link)
+                        #start a loop to find the index if the router id IF the routerID is in the table
+    
+                        process_link(link)
+                
                 #USED_ROUTER_IDS.append(q1.get(False))
             
         except:
             print("no new data")      
-
+        
 
 
             
