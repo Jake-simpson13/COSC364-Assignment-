@@ -332,7 +332,6 @@ def update(q, q1):
             else:
                 print("here")
                 
-            
         print_table(FORWARDING_TABLE)
         send()
         time.sleep(TIME_TO_SLEEP)
