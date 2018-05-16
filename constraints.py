@@ -20,10 +20,24 @@ def constraints(x, y, z):
                 else:
                     constraints += ("x{}{}{} = {}\n".format(i, j, k, n))
     return constraints                    
+     
+def bounds(x, y, z):
     
-                    
+    bounds = "  r >= 0\n"
+    for i in range(1, x+1):
+        for k in range(1, y+1):
+            for j in range(1, z+1):
+                bound = "{}{}{}".format(i,k,j)
+                bounds += ("  x{} >= 0\n".format(bound))
+    for i in range(1, x+1):
+        for k in range(1, y+1):
+            bounds += ("  x{}{} >= 0\n".format(i, k))
+    for k in range(1, y+1):
+        for j in range(1, z+1):
+            bounds += ("  d{}{} >= 0\n".format(k, j))
     
-
+    return bounds
+    
 
 def main(x, y, z):
     lp = header()
