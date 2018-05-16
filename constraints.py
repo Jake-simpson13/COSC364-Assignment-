@@ -37,6 +37,15 @@ def bounds(x, y, z):
             bounds += ("  d{}{} >= 0\n".format(k, j))
     
     return bounds
+
+def binaries(x, y, z):
+    binaries = ""
+    for i in range(1, x+1):
+        for k in range(1, y+1):
+            for j in range(1, z+1):
+                binaries += "u{0}{1}{2}".format(i,k,j)
+    
+    return binaries
     
 
 def main(x, y, z):
