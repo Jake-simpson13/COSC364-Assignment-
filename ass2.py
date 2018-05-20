@@ -1,4 +1,6 @@
 import sys
+import subprocess
+from datetime import datetime
 
 FILENAME = "assignment2.lp"
 BOUNDS = []
@@ -6,20 +8,7 @@ BOUNDS = []
 
 def header():
     return "Minimize\n\tr\nSubject to\n"
-
-#def constraints(x, y, z):
-    
-    #constraints = ""
-    #for i in range(1, x +1):
-        ##n = i + k
-        #for k in range(1, z+1):
-            #for j in range(1, y+1):
-                #n = i + j
-                #if j < y:
-                    #constraints += ("x{}{}{} + ".format(i, j, k))                    
-                #else:
-                    #constraints += ("x{}{}{} = {}\n".format(i, j, k, n))
-    #return constraints                    
+                  
      
 """ constraints to represent the amount of
     demand from node i to j
@@ -82,7 +71,6 @@ def srcNodeConstraints(x, y, z):
     return constraints
                 
      
-     ############### not working
 """ constraints for the dst node """ 
 def dstNodeConstraints(x, y, z):
     global BOUNDS
@@ -171,6 +159,18 @@ def binaries(x, y, z):
                 binaries += "u{0}{1}{2}\n".format(i,k,j)
     
     return binaries
+
+
+
+""" utilises the comand line function calls to call cplex, passing in the 
+    .lp filename as a parameter to get a result """
+def runCplex():
+    
+    path = "/home/cosc/student/jli231/Documents/COSC364/CPLEX/cplex/bin/x86-64_linux/cplex"
+    params = ["-r", "read "+ path + FILENAME, "optimize", "display decision variables -"]
+    
+    result = subprocess.Popen([path]+params, stdout=subprocess.PIPE)
+    output = result.communicate()[0]    
     
 
 def main(x, y, z):
@@ -188,6 +188,12 @@ def main(x, y, z):
     file = open(FILENAME, "w")
     file.write(lp)
     file.close()
+    
+    start_time = datetime.now()
+    #runCplex()
+    time_elapsed = datetime.now() - start_time
+    print('Time elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
+
     
 if __name__ == "__main__":
     if len(sys.argv) == 4:
