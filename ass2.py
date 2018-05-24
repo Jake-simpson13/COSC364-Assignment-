@@ -16,7 +16,7 @@ def demandVolumeConstraints(x, y, z):
     constraints = ""
     for i in range(1, x +1):
         for j in range(1, z+1):
-            constraints += ("DemandVolume{0}{1}: ".format(i, j))
+            constraints += ("DV{0}{1}: ".format(i, j))
             for k in range(1, y+1):
                 n = i + k
                 if k == 1:
@@ -34,7 +34,9 @@ def demandFlowConstraints(x, y, z):
     for i in range(1, x +1):
         for k in range(1, z+1):
             for j in range(1, y+1):
-                constraints += ("DemandFlow{0}{1}{2}: {4} x{0}{1}{2} - {3} u{0}{1}{2} = 0\n".format(i, k, j, i+j, 3))
+                constraints += ("DF{0}{1}{2}: {4} x{0}{1}{2} - {3} u{0}{1}{2} = 0\n".format(i, k, j, i+j, 3))
+                #constraints += ("DF{0}{1}{2}: {4} x{0}{1}{2} - {3} u{0}{1}{2} = 0\n".format(i, k, j, i+j, y))
+                
     return constraints  
     
 
@@ -51,7 +53,7 @@ def srcNodeConstraints(x, y, z):
                     cons += (" + x{0}{1}{2}".format(i, j, k))
                 else:
                     cons += (" + x{0}{1}{2}".format(i, j, k))
-                    constraints += ("srcConstraint{0}{2}: {3} - c{0}{2} = 0\n".format(i, k, j, cons))                    
+                    constraints += ("SC{0}{2}: {3} - c{0}{2} = 0\n".format(i, k, j, cons))                    
     return constraints
                 
      
@@ -68,7 +70,7 @@ def dstNodeConstraints(x, y, z):
                     cons += (" + x{2}{1}{0}".format(i, j, k))
                 else:
                     cons += (" + x{2}{1}{0}".format(i, j, k))
-                    constraints += ("dstConstraint{2}{0}: {3} - d{2}{0} = 0\n".format(i, k, j, cons))                    
+                    constraints += ("DC{2}{0}: {3} - d{2}{0} = 0\n".format(i, k, j, cons))                    
     return constraints     
      
 
@@ -79,7 +81,7 @@ def transNodeConstraints(x, y, z):
         for i in range(1, x+1):
             for j in range(1, z+1):
                 if (j == 1 and i == 1):
-                    constraints += ("transConstraint{1}: x{0}{1}{2}".format(i, k, j))
+                    constraints += ("TC{1}: x{0}{1}{2}".format(i, k, j))
                 elif (i == x and j == z):
                     constraints += (" + x{}{}{} - r <= 0\n".format(i, k, j))
                 else:
@@ -92,12 +94,13 @@ def utilisationConstraints(x, y, z):
     constraints = ""
     for i in range(1, x+1):
         for j in range(1, z+1):
-            constraints += ("utilisation{}{}: ".format(i, j))
+            constraints += ("U{}{}: ".format(i, j))
             for k in range(1, y+1):
                 if k == 1:
                     constraints += ("u{}{}{}".format(i, k, j))
                 elif k == y:
                     constraints += (" + u{}{}{} = {}\n".format(i, k, j, 3))
+                    #constraints += (" + u{}{}{} = {}\n".format(i, k, j, y))
                 else:
                     constraints += (" + u{}{}{}".format(i, k, j))            
     return constraints
@@ -127,18 +130,20 @@ def binaries(x, y, z):
         for k in range(1, y+1):
             for j in range(1, z+1):
                 binaries += "u{0}{1}{2}\n".format(i,k,j) 
+    binaries += "\nEND"            
     return binaries
 
 
 """ utilises the comand line function calls to call cplex, passing in the 
     .lp filename as a parameter to get a result """
 def cplex():
-    path = ["/home/cosc/student/jli231/Documents/COSC364/CPLEX/cplex/bin/x86-64_linux/cplex"]
-    params = ["-r", "read "+ path + FILENAME, "optimize", "display decision variables -"]
-    
-    result = subprocess.Popen(path+params, stdout=subprocess.PIPE)
-    output = result.communicate()[0]    
-    
+    path = "/home/cosc/student/jli231/Documents/COSC364/CPLEX/cplex/bin/x86-64_linux/cplex"
+    params = ["-c", "read /home/cosc/student/jli231/Documents/COSC364/COSC364-Assignment-/"+FILENAME, "optimize", "display solution variables -"]
+        
+    result = subprocess.Popen([path]+params, stdout=subprocess.PIPE)
+    output = result.communicate()[0] 
+    return output
+
 
 """ main """
 def main(x, y, z):
@@ -161,10 +166,16 @@ def main(x, y, z):
     
     # start timer, run cplex script, stop timer
     start = datetime.now()
-    #cplex()
+    results = cplex()
     time_taken = datetime.now() - start
     print('Time elapsed (hh:mm:ss.ms) {}'.format(time_taken))
-
+    
+    resultfile = open("resultFile.txt", "w")
+    resultfile.write(results.decode("utf-8"))
+    resultfile.close()
+    
+    
+    
     
 if __name__ == "__main__":
     if len(sys.argv) == 4:
