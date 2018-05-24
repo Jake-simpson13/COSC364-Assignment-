@@ -35,7 +35,6 @@ def demandFlowConstraints(x, y, z):
         for k in range(1, z+1):
             for j in range(1, y+1):
                 constraints += ("DF{0}{1}{2}: {4} x{0}{1}{2} - {3} u{0}{1}{2} = 0\n".format(i, k, j, i+j, 3))
-                #constraints += ("DF{0}{1}{2}: {4} x{0}{1}{2} - {3} u{0}{1}{2} = 0\n".format(i, k, j, i+j, y))
                 
     return constraints  
     
@@ -100,7 +99,6 @@ def utilisationConstraints(x, y, z):
                     constraints += ("u{}{}{}".format(i, k, j))
                 elif k == y:
                     constraints += (" + u{}{}{} = {}\n".format(i, k, j, 3))
-                    #constraints += (" + u{}{}{} = {}\n".format(i, k, j, y))
                 else:
                     constraints += (" + u{}{}{}".format(i, k, j))            
     return constraints
