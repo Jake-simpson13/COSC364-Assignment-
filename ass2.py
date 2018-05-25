@@ -3,7 +3,8 @@ import subprocess
 from datetime import datetime
 
 # filename to write the .lp file to, and for the cplex optimizer to read 
-FILENAME = "assignment2.lp"
+LP_FILENAME = "assignment2.lp"
+TXT_FILENAME = "assignment2.txt"
 
 
 """ returns header text """
@@ -16,7 +17,7 @@ def demandVolumeConstraints(x, y, z):
     constraints = ""
     for i in range(1, x +1):
         for j in range(1, z+1):
-            constraints += ("DV{0}{1}: ".format(i, j))
+            constraints += ("DemandVolume{0}{1}: ".format(i, j))
             for k in range(1, y+1):
                 n = i + k
                 if k == 1:
@@ -34,7 +35,7 @@ def demandFlowConstraints(x, y, z):
     for i in range(1, x +1):
         for k in range(1, z+1):
             for j in range(1, y+1):
-                constraints += ("DF{0}{1}{2}: {4} x{0}{1}{2} - {3} u{0}{1}{2} = 0\n".format(i, k, j, i+j, 3))
+                constraints += ("DemandFlow{0}{1}{2}: {4} x{0}{1}{2} - {3} u{0}{1}{2} = 0\n".format(i, k, j, i+j, 3))
                 
     return constraints  
     
@@ -52,7 +53,7 @@ def srcNodeConstraints(x, y, z):
                     cons += (" + x{0}{1}{2}".format(i, j, k))
                 else:
                     cons += (" + x{0}{1}{2}".format(i, j, k))
-                    constraints += ("SC{0}{2}: {3} - c{0}{2} = 0\n".format(i, k, j, cons))                    
+                    constraints += ("SrcConstraint{0}{2}: {3} - c{0}{2} = 0\n".format(i, k, j, cons))                    
     return constraints
                 
      
@@ -69,7 +70,7 @@ def dstNodeConstraints(x, y, z):
                     cons += (" + x{2}{1}{0}".format(i, j, k))
                 else:
                     cons += (" + x{2}{1}{0}".format(i, j, k))
-                    constraints += ("DC{2}{0}: {3} - d{2}{0} = 0\n".format(i, k, j, cons))                    
+                    constraints += ("DstConstraint{2}{0}: {3} - d{2}{0} = 0\n".format(i, k, j, cons))                    
     return constraints     
      
 
@@ -80,7 +81,7 @@ def transNodeConstraints(x, y, z):
         for i in range(1, x+1):
             for j in range(1, z+1):
                 if (j == 1 and i == 1):
-                    constraints += ("TC{1}: x{0}{1}{2}".format(i, k, j))
+                    constraints += ("TransConstraint{1}: x{0}{1}{2}".format(i, k, j))
                 elif (i == x and j == z):
                     constraints += (" + x{}{}{} - r <= 0\n".format(i, k, j))
                 else:
@@ -93,7 +94,7 @@ def utilisationConstraints(x, y, z):
     constraints = ""
     for i in range(1, x+1):
         for j in range(1, z+1):
-            constraints += ("U{}{}: ".format(i, j))
+            constraints += ("Utilisation{}{}: ".format(i, j))
             for k in range(1, y+1):
                 if k == 1:
                     constraints += ("u{}{}{}".format(i, k, j))
@@ -106,7 +107,7 @@ def utilisationConstraints(x, y, z):
 
 """ bounds for .lp file. All links >= 0 """     
 def bounds(x, y, z):   
-    bounds = "\nBounds\nr >= 0\n"        
+    bounds = "\nBounds\nr >= 0\nr <= 1\n"        
     for i in range(1, x+1):
         for k in range(1, y+1):
             for j in range(1, z+1):
@@ -132,11 +133,11 @@ def binaries(x, y, z):
     return binaries
 
 
-""" utilises the comand line function calls to call cplex, passing in the 
-    .lp filename as a parameter to get a result """
+""" utilises the command line function calls to run cplex, using the newly created 
+    .lp file as a parameter to get an optimization result """
 def cplex():
     path = "/home/cosc/student/jli231/Documents/COSC364/CPLEX/cplex/bin/x86-64_linux/cplex"
-    params = ["-c", "read /home/cosc/student/jli231/Documents/COSC364/COSC364-Assignment-/"+FILENAME, "optimize", "display solution variables -"]
+    params = ["-c", "read /home/cosc/student/jli231/Documents/COSC364/COSC364-Assignment-/"+LP_FILENAME, "optimize", "display solution variables -"]
         
     result = subprocess.Popen([path]+params, stdout=subprocess.PIPE)
     output = result.communicate()[0] 
@@ -158,7 +159,7 @@ def main(x, y, z):
     print(lp)
     
     # write .lp file so cplex can read it
-    file = open(FILENAME, "w")
+    file = open(LP_FILENAME, "w")
     file.write(lp)
     file.close()
     
@@ -168,7 +169,8 @@ def main(x, y, z):
     time_taken = datetime.now() - start
     print('Time elapsed (hh:mm:ss.ms) {}'.format(time_taken))
     
-    resultfile = open("resultFile.txt", "w")
+    # write optimization result to a text file, so we can read a formatted version of the results
+    resultfile = open(TXT_FILENAME, "w")
     resultfile.write(results.decode("utf-8"))
     resultfile.close()
     
