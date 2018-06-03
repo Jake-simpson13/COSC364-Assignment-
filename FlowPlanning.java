@@ -61,10 +61,10 @@ public class FlowPlanning {
 	
 	
 	/**
-	 * demand flow from src node Si to dst node Dj - limits to 3 trans nodes
+	 * demand flow from src node Si to dst node Dj - limited to 3 trans nodes
 	 * @param x
 	 * @param y
-	 * @param z// https://stackoverflow.com/questions/16714127/how-to-redirect-process-builders-output-to-a-string
+	 * @param z
 	 * @return String
 	 */
 	static String demandFlowConstraints(int x, int y, int z){
@@ -85,7 +85,7 @@ public class FlowPlanning {
 	
 	/**
 	 * constraints for the src - trans link
-	 * "for a link between src node Si and trans node Tk we denote the capacity by Cik"
+	 * "for a link between src node Si and trans node Tk we denote the capacity by Cik" - changed to STik
 	 * @param x
 	 * @param y
 	 * @param z
@@ -120,6 +120,7 @@ public class FlowPlanning {
 	
 	/**
 	 * constraints for the trans - dst link
+	 * "for a link between trans node Tk and dst node Dj we denote its capacity by Dkj" - changed to TDkj 
 	 * @param x
 	 * @param y
 	 * @param z
@@ -152,6 +153,13 @@ public class FlowPlanning {
 	}
 	
 	
+	/**
+	 * incorporates objective function r into equation, across all available trans nodes
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @return String
+	 */
 	static String transNodeConstraints(int x, int y, int z) {
 		String constraints = "";
 		// trans
@@ -265,7 +273,7 @@ public class FlowPlanning {
 	static String binaries(int x, int y, int z){
 		String binaries = "\nBinary\n";
 		// src
-		for(int i = 1; i < x+1; i++){
+		for(int i = 1; i < x+1; i++){// https://stackoverflow.com/questions/16714127/how-to-redirect-process-builders-output-to-a-string
 			// trans
 			for(int k = 1; k < y+1; k++){
 				// dst
@@ -279,13 +287,14 @@ public class FlowPlanning {
 	}
 	
 	
+	/**
+	 * calls cplex using a terminal command, then reads the response and/or error message returned
+	 * @param file
+	 * @return String
+	 */
 	static String cplex(String file){
 		// https://stackoverflow.com/questions/15356405/how-to-run-a-command-at-terminal-from-java-program
 		
-		// for repository
-		//String[] pathAndArgs = new String[] {"/home/cosc/student/jli231/Documents/COSC364/CPLEX/cplex/bin/x86-64_linux/cplex", "-c", "read /home/cosc/student/jli231/Documents/COSC364/COSC364-Assignment-/"+file, "optimize", "display solution variables -"};
-		
-		// for eclipse workspace
 		String[] pathAndArgs = new String[] {"/home/cosc/student/jli231/Documents/COSC364/CPLEX/cplex/bin/x86-64_linux/cplex", "-c", "read /home/cosc/student/jli231/eclipse-workspace/COSC364/"+file, "optimize", "display solution variables -"};
 		//String[] pathAndArgs = new String[] {"/home/cosc/student/jli231/Documents/COSC364/CPLEX/cplex/bin/x86-64_linux/cplex", "-c", "read /home/cosc/student/jli231/eclipse-workspace/COSC364/"+file, "optimize", "display conflict all"};
 		
@@ -296,6 +305,7 @@ public class FlowPlanning {
 			Runtime rt = Runtime.getRuntime();
 			Process proc = rt.exec(pathAndArgs);
 
+			// https://stackoverflow.com/questions/16714127/how-to-redirect-process-builders-output-to-a-string
 			// for successful result - read the output from the command
 			BufferedReader stdInput = new BufferedReader(new InputStreamReader(proc.getInputStream()));
 			String s = null;
@@ -307,6 +317,7 @@ public class FlowPlanning {
 			// for unsuccessful result - read any errors from the attempted command
 			BufferedReader stdError = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
 			while ((s = stdError.readLine()) != null) {
+				result += s;
 			    System.out.println(s);
 			}
 		}
@@ -372,7 +383,6 @@ public class FlowPlanning {
 		lp.lp += binaries(lp.x, lp.y, lp.z);
 		System.out.println(lp.lp);
 		
-
 		// write lp string to file(lpFile)
 		try {
 			FileWriter fw = new FileWriter(lp.lpFile);
@@ -386,16 +396,15 @@ public class FlowPlanning {
 			System.exit(1);
 		}
 		
+		// run cplex and time function call
 		String cplex_result;
-		// run cplex, which prints returned optimum solution
 		// https://stackoverflow.com/questions/180158/how-do-i-time-a-methods-execution-in-java
 		long startTime = System.currentTimeMillis();
 		cplex_result = cplex(lp.lpFile);
 		long endTime = System.currentTimeMillis();
 		System.out.println("cplex function call took " + (endTime - startTime) + " ms");
 		
-		
-		
+		// write results to a new .txt file
 		try {
 			FileWriter fw = new FileWriter(lp.lpText);
 			BufferedWriter bw = new BufferedWriter(fw);
